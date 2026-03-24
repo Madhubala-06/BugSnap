@@ -1,0 +1,38 @@
+{
+  "name": "@bugsnap/extension",
+  "displayName": "BugSnap",
+  "version": "0.0.1",
+  "description": "Capture bugs automatically with AI-powered analysis",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "plasmo": "^0.89.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.280",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.7.0",
+    "tailwindcss": "^3.4.15",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49"
+  },
+  "manifest": {
+    "permissions": [
+      "activeTab",
+      "storage",
+      "tabs",
+      "scripting",
+      "webNavigation"
+    ],
+    "host_permissions": [
+      "https://*/*",
+      "http://localhost/*"
+    ]
+  }
+}

@@ -1,0 +1,219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Background colors */
+    --background: 0 0% 100%;
+    --background-secondary: 226 47% 98%;
+    --background-tertiary: 220 14% 96%;
+
+    /* Foreground/Text colors */
+    --foreground: 222 47% 11%;
+    --foreground-secondary: 215 16% 47%;
+    --foreground-muted: 215 20% 65%;
+
+    /* Card */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Primary - Indigo */
+    --primary: 239 84% 67%;
+    --primary-hover: 239 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 239 84% 97%;
+
+    /* Accent - Amber */
+    --accent: 38 92% 50%;
+    --accent-hover: 38 92% 45%;
+    --accent-foreground: 0 0% 100%;
+    --accent-muted: 48 96% 89%;
+
+    /* Success - Emerald */
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 152 76% 91%;
+
+    /* Destructive - Rose */
+    --destructive: 350 89% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-muted: 356 100% 97%;
+
+    /* Warning - Orange */
+    --warning: 25 95% 53%;
+    --warning-foreground: 0 0% 100%;
+    --warning-muted: 34 100% 92%;
+
+    /* Border & Input */
+    --border: 220 13% 91%;
+    --border-hover: 220 13% 80%;
+    --input: 220 13% 91%;
+    --ring: 239 84% 67%;
+
+    /* Sidebar */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-active: 239 84% 97%;
+
+    /* Severity colors */
+    --severity-critical: 350 89% 60%;
+    --severity-critical-bg: 356 100% 97%;
+    --severity-high: 25 95% 53%;
+    --severity-high-bg: 34 100% 92%;
+    --severity-medium: 45 93% 47%;
+    --severity-medium-bg: 48 96% 89%;
+    --severity-low: 160 84% 39%;
+    --severity-low-bg: 152 76% 91%;
+
+    /* Radius */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Background colors */
+    --background: 224 71% 4%;
+    --background-secondary: 222 47% 8%;
+    --background-tertiary: 222 47% 12%;
+
+    /* Foreground/Text colors */
+    --foreground: 210 40% 98%;
+    --foreground-secondary: 215 20% 65%;
+    --foreground-muted: 215 16% 47%;
+
+    /* Card */
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    /* Primary - Indigo (lighter for dark mode) */
+    --primary: 239 84% 67%;
+    --primary-hover: 239 84% 74%;
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 239 50% 15%;
+
+    /* Accent - Amber */
+    --accent: 38 92% 50%;
+    --accent-hover: 38 92% 58%;
+    --accent-foreground: 0 0% 0%;
+    --accent-muted: 38 50% 15%;
+
+    /* Success - Emerald */
+    --success: 160 84% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 160 50% 15%;
+
+    /* Destructive - Rose */
+    --destructive: 350 89% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-muted: 350 50% 15%;
+
+    /* Warning - Orange */
+    --warning: 25 95% 53%;
+    --warning-foreground: 0 0% 0%;
+    --warning-muted: 25 50% 15%;
+
+    /* Border & Input */
+    --border: 222 30% 18%;
+    --border-hover: 222 30% 28%;
+    --input: 222 30% 18%;
+    --ring: 239 84% 67%;
+
+    /* Sidebar */
+    --sidebar: 222 47% 6%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-border: 222 30% 18%;
+    --sidebar-active: 239 50% 15%;
+
+    /* Severity colors - adjusted for dark mode */
+    --severity-critical: 350 89% 60%;
+    --severity-critical-bg: 350 50% 15%;
+    --severity-high: 25 95% 53%;
+    --severity-high-bg: 25 50% 15%;
+    --severity-medium: 45 93% 47%;
+    --severity-medium-bg: 45 50% 15%;
+    --severity-low: 160 84% 45%;
+    --severity-low-bg: 160 50% 15%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Rich Text Editor Styles */
+.tiptap {
+  outline: none;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  color: hsl(var(--foreground-muted));
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tiptap h1 {
+  @apply text-2xl font-bold mb-4 text-foreground;
+}
+
+.tiptap h2 {
+  @apply text-xl font-semibold mb-3 text-foreground;
+}
+
+.tiptap h3 {
+  @apply text-lg font-medium mb-2 text-foreground;
+}
+
+.tiptap p {
+  @apply mb-3 text-foreground-secondary leading-relaxed;
+}
+
+.tiptap ul, .tiptap ol {
+  @apply mb-3 pl-6 text-foreground-secondary;
+}
+
+.tiptap ul {
+  @apply list-disc;
+}
+
+.tiptap ol {
+  @apply list-decimal;
+}
+
+.tiptap li {
+  @apply mb-1;
+}
+
+.tiptap blockquote {
+  @apply border-l-4 border-primary pl-4 italic text-foreground-secondary my-4;
+}
+
+.tiptap code {
+  @apply bg-primary-muted text-primary px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.tiptap pre {
+  @apply bg-gray-900 text-gray-100 p-4 rounded-lg my-4 overflow-x-auto;
+}
+
+.tiptap pre code {
+  @apply bg-transparent text-inherit p-0;
+}
+
+.tiptap hr {
+  @apply border-border my-6;
+}
+
+.tiptap a {
+  @apply text-primary underline;
+}
+
+.tiptap img {
+  @apply rounded-lg max-w-full my-4;
+}

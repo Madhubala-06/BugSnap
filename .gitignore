@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+.next
+.turbo
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage
+
+# Plasmo
+.plasmo
+
+# Uploads (keep folder structure, ignore files)
+apps/api/uploads/**/*
+!apps/api/uploads/.gitkeep
+!apps/api/uploads/recordings/.gitkeep
+!apps/api/uploads/thumbnails/.gitkeep
+settings.json

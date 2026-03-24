@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Workspace - Team/Organization
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users      User[]
+  bugReports BugReport[]
+
+  @@map("workspaces")
+}
+
+// User account
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  avatarUrl   String?  @map("avatar_url")
+  workspaceId String   @map("workspace_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sessions   Session[]
+  bugReports BugReport[]
+
+  @@map("users")
+}
+
+// Recording session
+model Session {
+  id        String        @id @default(cuid())
+  userId    String        @map("user_id")
+  status    SessionStatus @default(RECORDING)
+  metadata  Json?         // Browser info, OS, viewport size, etc.
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recording Recording?
+  logs      SessionLog[]
+  bugReport BugReport?
+
+  @@map("sessions")
+}
+
+enum SessionStatus {
+  RECORDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Video recording
+model Recording {
+  id          String   @id @default(cuid())
+  sessionId   String   @unique @map("session_id")
+  url         String?  // URL to stored video (S3/R2)
+  duration    Int?     // Duration in seconds
+  size        Int?     // File size in bytes
+  mimeType    String?  @default("video/webm") @map("mime_type")
+  thumbnailUrl String? @map("thumbnail_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("recordings")
+}
+
+// Session logs (console, network, clicks, errors)
+model SessionLog {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  type      LogType
+  level     LogLevel @default(INFO)
+  message   String
+  data      Json?    // Additional data (stack trace, request/response, element info)
+  timestamp DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, type])
+  @@index([sessionId, timestamp])
+  @@map("session_logs")
+}
+
+enum LogType {
+  CONSOLE    // Console.log/warn/error
+  NETWORK    // HTTP requests
+  CLICK      // User clicks
+  ERROR      // JavaScript errors
+  NAVIGATION // Page navigations
+  INPUT      // Form inputs (sanitized)
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+// Bug report generated from session
+model BugReport {
+  id             String       @id @default(cuid())
+  sessionId      String?      @unique @map("session_id")
+  workspaceId    String?      @map("workspace_id")
+  reporterId     String?      @map("reporter_id")
+
+  // Bug details
+  title          String
+  description    String?
+  stepsToReproduce String[]   @map("steps_to_reproduce")
+  expectedResult String?      @map("expected_result")
+  actualResult   String?      @map("actual_result")
+
+  // Classification
+  severity       Severity     @default(MEDIUM)
+  status         ReportStatus @default(OPEN)
+
+  // AI analysis
+  aiSummary      String?      @map("ai_summary")
+  aiRootCause    String?      @map("ai_root_cause")
+  aiSuggestions  String[]     @map("ai_suggestions")
+
+  // Metadata
+  url            String?      // URL where bug occurred
+  browserInfo    Json?        @map("browser_info")
+
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  session   Session?   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reporter  User?      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, severity])
+  @@index([reporterId])
+  @@map("bug_reports")
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  WONT_FIX
+}
