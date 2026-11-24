@@ -1,5 +1,9 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { startScreenRecording, stopScreenRecording, type RecordingResult } from "../lib/recorder"
+import { getConfig } from "../lib/storage"
+import { apiFetch, getAuth } from "../lib/auth"
+import { uploadFile } from "../lib/upload"
+import type { RecordingSession } from "../lib/types"
 import "../styles/recorder.css"
 import logoUrl from "data-base64:~assets/icon.png"
 
@@ -15,6 +19,8 @@ interface BugAnalysis {
   affectedArea?: string
 }
 
+const targetTabId = Number(new URLSearchParams(location.search).get("tabId")) || undefined
+
 function RecorderPage() {
   const [status, setStatus] = useState<Status>("idle")
   const [duration, setDuration] = useState(0)
@@ -22,175 +28,56 @@ function RecorderPage() {
   const [result, setResult] = useState<RecordingResult | null>(null)
   const [uploadProgress, setUploadProgress] = useState<string>("")
   const [analysis, setAnalysis] = useState<BugAnalysis | null>(null)
+  const [aiNote, setAiNote] = useState<string | null>(null)
+  const [reportLink, setReportLink] = useState<string | null>(null)
+  const [logCount, setLogCount] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const stoppingRef = useRef(false)
+  const recordingStartedAt = useRef<number | null>(null)
 
-  // Auto-start recording when page opens
-  useEffect(() => {
-    handleStartRecording()
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [])
-
-  // Duration timer
-  useEffect(() => {
-    if (status === "recording") {
-      intervalRef.current = setInterval(() => {
-        setDuration((d) => d + 1)
-      }, 1000)
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
-    }
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [status])
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-  }
-
-  const handleStartRecording = async () => {
-    setStatus("requesting")
-    setError(null)
-
-    const result = await startScreenRecording()
-
-    if (result.success) {
-      setStatus("recording")
-      setDuration(0)
-      // Notify background script
-      chrome.runtime.sendMessage({ type: "START_RECORDING" })
-    } else {
-      setStatus("error")
-      setError(result.error || "Failed to start recording")
-    }
-  }
-
-  const handleStopRecording = async () => {
-    setStatus("stopping")
-
-    const recordingResult = await stopScreenRecording()
-
-    if (recordingResult) {
-      setResult(recordingResult)
-      setStatus("uploading")
-
-      // Notify background script
-      chrome.runtime.sendMessage({ type: "STOP_RECORDING" })
-
-      // Upload to backend
-      await uploadRecording(recordingResult)
-    } else {
-      setStatus("error")
-      setError("Failed to stop recording")
-    }
-  }
-
-  const uploadRecording = async (recording: RecordingResult) => {
+  const uploadRecording = useCallback(async (recording: RecordingResult, session: RecordingSession | null) => {
     try {
-      const apiUrl = "http://localhost:3001"
-      const screenshotUrls: string[] = []
-      let videoUrl = ""
-      let aiAnalysis: BugAnalysis | null = null
+      const { appUrl } = await getConfig()
 
-      // Upload video
       setUploadProgress("Uploading video...")
-      const videoFormData = new FormData()
-      videoFormData.append("file", recording.videoBlob, "recording.webm")
+      const recordingUrl = await uploadFile("recording", recording.videoBlob, "recording.webm")
 
-      const videoResponse = await fetch(`${apiUrl}/upload/recording`, {
-        method: "POST",
-        body: videoFormData,
-      })
-
-      if (!videoResponse.ok) {
-        throw new Error("Failed to upload video")
-      }
-
-      const videoData = await videoResponse.json()
-      videoUrl = videoData.url
-      console.log("Video uploaded:", videoData)
-
-      // Upload screenshots
+      const screenshotUrls: string[] = []
       for (let i = 0; i < recording.screenshots.length; i++) {
         setUploadProgress(`Uploading screenshot ${i + 1}/${recording.screenshots.length}...`)
-
-        const screenshotFormData = new FormData()
-        screenshotFormData.append("file", recording.screenshots[i], `screenshot-${i}.png`)
-
-        const screenshotResponse = await fetch(`${apiUrl}/upload/thumbnail`, {
-          method: "POST",
-          body: screenshotFormData,
-        })
-
-        if (screenshotResponse.ok) {
-          const screenshotData = await screenshotResponse.json()
-          console.log(`Screenshot ${i + 1} uploaded:`, screenshotData)
-          screenshotUrls.push(screenshotData.url)
-        }
-      }
-
-      // Analyze with AI
-      if (screenshotUrls.length > 0) {
-        setStatus("analyzing")
-        setUploadProgress("Analyzing with AI...")
-
         try {
-          const analyzeResponse = await fetch(`${apiUrl}/ai/analyze`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ screenshots: screenshotUrls }),
-          })
-
-          if (analyzeResponse.ok) {
-            const analyzeData = await analyzeResponse.json()
-            if (analyzeData.success && analyzeData.analysis) {
-              aiAnalysis = analyzeData.analysis
-              setAnalysis(aiAnalysis)
-            }
-          }
-        } catch (aiError) {
-          console.log("AI analysis not available:", aiError)
+          screenshotUrls.push(await uploadFile("screenshot", recording.screenshots[i], `screenshot-${i}.jpg`))
+        } catch (shotError) {
+          console.warn("Screenshot upload failed", shotError)
         }
       }
 
-      // Save bug report to database
-      setUploadProgress("Saving bug report...")
-      try {
-        const reportData = {
-          title: aiAnalysis?.title || `Bug Report - ${new Date().toLocaleString()}`,
-          description: aiAnalysis?.description,
-          stepsToReproduce: aiAnalysis?.steps || [],
-          severity: (aiAnalysis?.severity?.toUpperCase() || "MEDIUM") as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
-          aiSummary: aiAnalysis?.description,
-          aiSuggestions: aiAnalysis?.suggestions || [],
-          recordingUrl: videoUrl,
-          screenshotUrls: screenshotUrls,
-        }
-
-        const reportResponse = await fetch(`${apiUrl}/reports/quick`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(reportData),
-        })
-
-        if (reportResponse.ok) {
-          const report = await reportResponse.json()
-          console.log("Bug report saved:", report)
-        }
-      } catch (reportError) {
-        console.error("Failed to save bug report:", reportError)
-      }
+      // One call: the server saves the report and runs the AI on
+      // screenshots + console/network logs + clicks + page info.
+      setStatus("analyzing")
+      setUploadProgress("Writing the bug report...")
+      const logs = session?.logs ?? []
+      setLogCount(logs.length)
+      const res = await apiFetch("/reports/quick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recordingUrl,
+          screenshotUrls,
+          duration: recording.duration,
+          page: session?.metadata,
+          logs,
+          droppedLogs: session?.droppedLogs ?? 0,
+          startedAt: recordingStartedAt.current ?? session?.startTime,
+          analyze: true,
+        }),
+      })
+      if (!res.ok) throw new Error(`Saving the report failed (${res.status})`)
+      const report = await res.json()
+      if (report.analysis) setAnalysis(report.analysis)
+      else if (report.aiStatus === "pending") setAiNote("Saved. The AI is writing the report now; it will appear on the report page in about a minute.")
+      else setAiNote(report.aiError || null)
+      if (report.id) setReportLink(`${appUrl}/dashboard/reports/${report.id}`)
 
       setUploadProgress("")
       setStatus("done")
@@ -199,6 +86,80 @@ function RecorderPage() {
       setStatus("error")
       setError(err instanceof Error ? err.message : "Failed to upload")
     }
+  }, [])
+
+  const handleStopRecording = useCallback(async () => {
+    if (stoppingRef.current) return
+    stoppingRef.current = true
+    setStatus("stopping")
+    const recordingResult = await stopScreenRecording()
+    const stop = await chrome.runtime.sendMessage({ type: "STOP_RECORDING" }).catch(() => null)
+    if (!recordingResult) {
+      setStatus("error")
+      setError("Failed to stop recording")
+      return
+    }
+    setResult(recordingResult)
+    setStatus("uploading")
+    await uploadRecording(recordingResult, stop?.session ?? null)
+  }, [uploadRecording])
+
+  const handleStartRecording = useCallback(async () => {
+    setError(null)
+    if (!(await getAuth())) {
+      setStatus("error")
+      setError("Please sign in first: click the BugSnap icon in the toolbar.")
+      return
+    }
+    setStatus("requesting")
+    stoppingRef.current = false
+    // "Stop sharing" in Chrome's bar ends the recording the same way as our button.
+    const started = await startScreenRecording(() => handleStopRecording())
+    if (started.success) {
+      recordingStartedAt.current = Date.now()
+      setStatus("recording")
+      setDuration(0)
+      await chrome.runtime.sendMessage({ type: "START_RECORDING", targetTabId })
+      // Send the user back to the page with the bug.
+      if (targetTabId) chrome.tabs.update(targetTabId, { active: true }).catch(() => undefined)
+    } else {
+      setStatus("error")
+      setError(started.error || "Failed to start recording")
+    }
+  }, [handleStopRecording])
+
+  // Auto-start when the page opens
+  useEffect(() => {
+    handleStartRecording()
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Stop pressed in the popup
+  useEffect(() => {
+    const listener = (message: { type?: string }) => {
+      if (message?.type === "STOP_RECORDING") handleStopRecording()
+    }
+    chrome.runtime.onMessage.addListener(listener)
+    return () => chrome.runtime.onMessage.removeListener(listener)
+  }, [handleStopRecording])
+
+  // Duration timer
+  useEffect(() => {
+    if (status !== "recording") return
+    intervalRef.current = setInterval(() => setDuration((d) => d + 1), 1000)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }, [status])
+
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   return (
@@ -231,7 +192,7 @@ function RecorderPage() {
                 </svg>
                 Stop Recording
               </button>
-              <p className="hint">Reproduce the bug, then click Stop Recording</p>
+              <p className="hint">Go back to your tab and reproduce the bug. Then stop here, from the BugSnap icon, or with the Chrome &quot;Stop sharing&quot; bar.</p>
             </div>
           )}
 
@@ -260,6 +221,7 @@ function RecorderPage() {
                 <p>Duration: {formatDuration(result.duration)}</p>
                 <p>Video size: {(result.videoBlob.size / 1024 / 1024).toFixed(2)} MB</p>
                 <p>Screenshots: {result.screenshots.length}</p>
+                <p>Logs captured: {logCount}</p>
               </div>
 
               {analysis && (
@@ -310,11 +272,16 @@ function RecorderPage() {
 
               {!analysis && (
                 <p className="no-analysis">
-                  Add OpenAI API key in Settings to enable AI bug analysis
+                  {aiNote || "Report saved. Add a Gemini API key in Settings to get an AI write-up."}
                 </p>
               )}
 
-              <button className="close-button" onClick={() => window.close()}>
+              {reportLink && (
+                <a className="close-button" href={reportLink} target="_blank" rel="noreferrer">
+                  Open report
+                </a>
+              )}
+              <button className="close-button secondary" onClick={() => window.close()}>
                 Close Window
               </button>
             </div>

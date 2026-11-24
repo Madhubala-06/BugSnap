@@ -389,3 +389,15 @@
 /* BugSnap logo in the recorder header */
 .recorder-icon { border-radius: 8px; box-shadow: 0 0 18px -4px rgba(59,130,246,.7); }
 body { background: #0a0a0b; font-family: "Geist", system-ui, -apple-system, sans-serif; }
+
+a.close-button {
+  display: inline-flex;
+  justify-content: center;
+  text-decoration: none;
+  margin-bottom: 8px;
+}
+
+.close-button.secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}

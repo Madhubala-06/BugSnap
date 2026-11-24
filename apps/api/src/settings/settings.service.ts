@@ -1,58 +1,106 @@
-import { Injectable } from "@nestjs/common"
-import * as fs from "fs"
-import * as path from "path"
+import { BadRequestException, Injectable } from "@nestjs/common"
+import { PrismaService } from "../prisma/prisma.service"
+import { Prisma } from "@prisma/client"
+import { decrypt, encrypt } from "../auth/crypto"
 
-interface Settings {
-  geminiKey?: string
-}
-
+/** Per-workspace settings. The Gemini key is stored encrypted. */
 @Injectable()
 export class SettingsService {
-  private readonly settingsPath: string
-  private settings: Settings = {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor() {
-    this.settingsPath = path.join(process.cwd(), "settings.json")
-    this.loadSettings()
+  get sharedLimit() {
+    return Number(process.env.SHARED_AI_MONTHLY_LIMIT || 20)
   }
 
-  private loadSettings() {
-    try {
-      if (fs.existsSync(this.settingsPath)) {
-        const data = fs.readFileSync(this.settingsPath, "utf-8")
-        this.settings = JSON.parse(data)
+  /**
+   * Which Gemini key to use. A workspace's own key has no BugSnap limit.
+   * Otherwise the shared key is used, up to `sharedLimit` write-ups a month.
+   */
+  async pickGeminiKey(workspaceId: string): Promise<{ key: string; shared: boolean } | { key: null; reason: string }> {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { geminiKeyEnc: true, aiUsed: true, aiPeriod: true },
+    })
+    const own = ws?.geminiKeyEnc ? decrypt(ws.geminiKeyEnc) : null
+    if (own) return { key: own, shared: false }
+    const shared = process.env.GEMINI_API_KEY
+    if (!shared) return { key: null, reason: "No Gemini API key set. Add one in Settings to get an AI write-up." }
+    const used = ws?.aiPeriod === currentPeriod() ? ws.aiUsed : 0
+    if (used >= this.sharedLimit) {
+      return { key: null, reason: `You used all ${this.sharedLimit} free AI write-ups this month. Add your own free Gemini key in Settings for unlimited write-ups.` }
+    }
+    return { key: shared, shared: true }
+  }
+
+  /** Counts one free write-up (only call after a successful AI answer). */
+  async countSharedUse(workspaceId: string) {
+    const period = currentPeriod()
+    const ws = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { aiPeriod: true } })
+    await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: ws?.aiPeriod === period ? { aiUsed: { increment: 1 } } : { aiUsed: 1, aiPeriod: period },
+    })
+  }
+
+  async getKeyStatus(workspaceId: string) {
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { geminiKeyEnc: true, aiUsed: true, aiPeriod: true, githubRepo: true },
+    })
+    const own = ws?.geminiKeyEnc ? decrypt(ws.geminiKeyEnc) : null
+    return {
+      key: own ? (own.length > 14 ? `${own.slice(0, 6)}...${own.slice(-4)}` : "***") : undefined,
+      usingServerKey: !own && Boolean(process.env.GEMINI_API_KEY),
+      sharedUsed: ws?.aiPeriod === currentPeriod() ? ws.aiUsed : 0,
+      sharedLimit: this.sharedLimit,
+      githubRepo: ws?.githubRepo ?? null,
+    }
+  }
+
+  async onboarding(workspaceId: string) {
+    const [reports, recorded, aiDone, shared, apiKeys, status] = await Promise.all([
+      this.prisma.bugReport.count({ where: { workspaceId } }),
+      this.prisma.bugReport.count({ where: { workspaceId, NOT: { browserInfo: { equals: Prisma.DbNull } } } }),
+      this.prisma.bugReport.count({ where: { workspaceId, aiStatus: "done" } }),
+      this.prisma.bugReport.count({ where: { workspaceId, NOT: { shareToken: null } } }),
+      this.prisma.apiKey.count({ where: { workspaceId, revokedAt: null } }),
+      this.getKeyStatus(workspaceId),
+    ])
+    return {
+      recordedFirstBug: recorded > 0,
+      gotAiWriteUp: aiDone > 0,
+      sharedReport: shared > 0 || Boolean(status.githubRepo),
+      connectedAgent: apiKeys > 0,
+      reports,
+      ai: status,
+    }
+  }
+
+  async setGithubRepo(workspaceId: string, repo: unknown) {
+    let value: string | null = null
+    if (typeof repo === "string" && repo.trim()) {
+      const cleaned = repo.trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/, "").replace(/\/+$/, "")
+      if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(cleaned)) {
+        throw new BadRequestException("Use the form owner/repo, for example acme/web-app")
       }
-    } catch (error) {
-      console.error("Failed to load settings:", error)
-      this.settings = {}
+      value = cleaned
     }
+    await this.prisma.workspace.update({ where: { id: workspaceId }, data: { githubRepo: value } })
+    return { githubRepo: value }
   }
 
-  private saveSettings() {
-    try {
-      fs.writeFileSync(this.settingsPath, JSON.stringify(this.settings, null, 2))
-    } catch (error) {
-      console.error("Failed to save settings:", error)
+  async setGeminiKey(workspaceId: string, key: unknown) {
+    if (key === null || key === "") {
+      await this.prisma.workspace.update({ where: { id: workspaceId }, data: { geminiKeyEnc: null } })
+      return
     }
-  }
-
-  getGeminiKey(): string | undefined {
-    // First check env variable, then fall back to settings.json
-    return process.env.GEMINI_API_KEY || this.settings.geminiKey
-  }
-
-  getMaskedGeminiKey(): string | undefined {
-    const key = this.getGeminiKey()
-    if (!key) return undefined
-    // Show first 6 chars and last 4 chars
-    if (key.length > 14) {
-      return key.slice(0, 6) + "..." + key.slice(-4)
+    if (typeof key !== "string" || key.trim().length < 20 || key.length > 200) {
+      throw new BadRequestException("That does not look like a Gemini API key")
     }
-    return "***"
+    await this.prisma.workspace.update({ where: { id: workspaceId }, data: { geminiKeyEnc: encrypt(key.trim()) } })
   }
+}
 
-  setGeminiKey(key: string) {
-    this.settings.geminiKey = key
-    this.saveSettings()
-  }
+export function currentPeriod(date = new Date()) {
+  return date.toISOString().slice(0, 7)
 }

@@ -26,8 +26,13 @@ export async function setSession(session: RecordingSession | null): Promise<void
   await chrome.storage.local.set({ [STORAGE_KEYS.SESSION]: session })
 }
 
+// Set PLASMO_PUBLIC_API_URL / PLASMO_PUBLIC_APP_URL at build time for production.
+export const DEFAULT_API_URL = process.env.PLASMO_PUBLIC_API_URL || "http://localhost:3001"
+export const DEFAULT_APP_URL = process.env.PLASMO_PUBLIC_APP_URL || "http://localhost:3002"
+
 export async function getConfig(): Promise<{
   apiUrl: string
+  appUrl: string
   userId: string | null
   workspaceId: string | null
 }> {
@@ -37,7 +42,8 @@ export async function getConfig(): Promise<{
     STORAGE_KEYS.WORKSPACE_ID,
   ])
   return {
-    apiUrl: result[STORAGE_KEYS.API_URL] || "http://localhost:3001",
+    apiUrl: result[STORAGE_KEYS.API_URL] || DEFAULT_API_URL,
+    appUrl: DEFAULT_APP_URL,
     userId: result[STORAGE_KEYS.USER_ID] || null,
     workspaceId: result[STORAGE_KEYS.WORKSPACE_ID] || null,
   }

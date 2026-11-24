@@ -17,14 +17,14 @@ export default function Landing() {
 
 <nav className="nav"><span className="logo"><img src="/logo.png" alt="" width={26} height={26}/>BugSnap</span>
 <ul><li>Product</li><li>How it works</li><li>Integrations</li><li>Docs</li></ul>
-<span className="r"><span className="snapped" id="snapped">0 bugs snapped</span><a className="btn p" href="/dashboard">Try the demo</a></span></nav>
+<span className="r"><span className="snapped" id="snapped">0 bugs snapped</span><a className="btn p" href="/login">Start free</a></span></nav>
 
 <header className="hero" id="hero">
   <canvas id="field"></canvas><div className="glow"></div>
   <span className="badge"><b>New</b>An agent that reproduces bugs for you</span>
   <h1>Record a <span className="bracket" id="bkt"><span className="lbl">captured</span><svg className="bk l" viewBox="0 0 10 100" preserveAspectRatio="none" aria-hidden="true"><path d="M10 1.5H1.5V98.5H10" vectorEffect="non-scaling-stroke"/></svg>bug<svg className="bk r" viewBox="0 0 10 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 1.5H8.5V98.5H0" vectorEffect="non-scaling-stroke"/></svg></span> once.<br/><span className="soft">The agent does the rest.</span></h1>
   <p className="lead">BugSnap watches the recording, reads the console and network logs, replays the steps in a clean browser to confirm the bug, finds duplicates, and drafts the ticket. You approve before it's filed.</p>
-  <div className="cta"><a className="btn p" href="/dashboard">Try the demo, no sign-up</a><a className="btn" href="https://github.com/Madhubala-06/BugSnap#load-the-chrome-extension">Add to Chrome →</a></div>
+  <div className="cta"><a className="btn p" href="/login">Start free, sign in with email</a><a className="btn" href="/r/demo">See a real report →</a></div>
   <p className="hint">psst, there's a <b>bug</b> crawling on this page. click it to snap it.</p>
   <div id="bug" title="Snap me"><svg viewBox="0 0 32 32"><g fill="none" stroke="#93c5fd" strokeWidth="1.6" strokeLinecap="round"><path d="M10 13 5 10M10 17H4M10 21l-5 3M22 13l5-3M22 17h6M22 21l5 3M13 8l-2-3M19 8l2-3"/></g><ellipse cx="16" cy="18" rx="6.5" ry="8" fill="#3b82f6"/><circle cx="16" cy="9.5" r="3.6" fill="#1d4ed8"/><path d="M16 11v15" stroke="#0a0a0b" strokeWidth="1.2"/></svg></div>
 
@@ -123,17 +123,17 @@ export default function Landing() {
 <div className="final"><canvas id="rain"></canvas>
   <span className="kick">TRY IT</span>
   <h2>See the agent work on a real bug</h2>
-  <p className="sub" style={{marginBottom:"26px"}}>Open the demo workspace with a recorded checkout bug. No account needed.</p>
-  <div className="cta"><a className="btn p" href="/dashboard">Open the demo</a><a className="btn" href="https://github.com/Madhubala-06/BugSnap">View on GitHub</a></div>
+  <p className="sub" style={{marginBottom:"26px"}}>Sign in with your email, add the extension, and record your first bug in a minute. No password, no card.</p>
+  <div className="cta"><a className="btn p" href="/login">Start free</a><a className="btn" href="/r/demo">See a real report</a></div>
 </div>
 
 <footer id="foot">
   <div className="ftop">
     <div className="brand"><span className="logo"><img src="/logo.png" alt="" width={26} height={26}/>BugSnap</span><p>© 2026 BugSnap. Built by Madhubala.<br/>All rights reserved.</p></div>
-    <div><h4>Product</h4><ul><li><a href="#">Chrome extension</a></li><li><a href="#">Agent</a></li><li><a href="#">Integrations</a></li><li><a href="/dashboard">Demo</a></li></ul></div>
-    <div><h4>Developers</h4><ul><li><a href="#">Docs</a></li><li><a href="#">API</a></li><li><a href="https://github.com/Madhubala-06/BugSnap">GitHub</a></li><li><a href="#">Changelog</a></li></ul></div>
-    <div><h4>Legal</h4><ul><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li><li><a href="#">Data handling</a></li></ul></div>
-    <div><h4>Account</h4><ul><li><a href="#">Sign up</a></li><li><a href="#">Log in</a></li><li><a href="#">Forgot password</a></li></ul></div>
+    <div><h4>Product</h4><ul><li><a href="https://github.com/Madhubala-06/BugSnap#load-the-extension">Chrome extension</a></li><li><a href="/dashboard">Dashboard</a></li></ul></div>
+    <div><h4>Developers</h4><ul><li><a href="https://github.com/Madhubala-06/BugSnap#readme">Docs</a></li><li><a href="https://github.com/Madhubala-06/BugSnap">GitHub</a></li></ul></div>
+    <div><h4>Legal</h4><ul><li><a href="/privacy">Privacy</a></li><li><a href="/terms">Terms</a></li></ul></div>
+    <div><h4>Account</h4><ul><li><a href="/login">Sign up</a></li><li><a href="/login">Log in</a></li></ul></div>
   </div>
   <div className="fbot"><span>Made for people who hate writing bug reports</span><span>v0.2 · preview</span></div>
   <div className="bigword" id="bigword">BugSnap</div>

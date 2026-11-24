@@ -11,139 +11,119 @@ let screenshotInterval: ReturnType<typeof setInterval> | null = null
 let screenshots: Blob[] = []
 let videoElement: HTMLVideoElement | null = null
 let canvasElement: HTMLCanvasElement | null = null
-let startTime: number = 0
+let startTime = 0
+let finished: Promise<RecordingResult> | null = null
+let pendingShots: Promise<void>[] = []
 
-export async function startScreenRecording(): Promise<{ success: boolean; error?: string }> {
+const MAX_SCREENSHOTS = 20
+
+/**
+ * Starts screen capture. `onEnded` fires when the user stops sharing from
+ * Chrome's own "Stop sharing" bar, so the page can still upload the result.
+ */
+export async function startScreenRecording(onEnded?: () => void): Promise<{ success: boolean; error?: string }> {
   try {
-    // Request screen capture
     mediaStream = await navigator.mediaDevices.getDisplayMedia({
-      video: {
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        frameRate: { ideal: 30 },
-      },
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
       audio: false,
     })
 
-    // Create video element for screenshots
     videoElement = document.createElement("video")
     videoElement.srcObject = mediaStream
     videoElement.muted = true
     await videoElement.play()
-
-    // Create canvas for screenshots
     canvasElement = document.createElement("canvas")
 
-    // Start recording
     recordedChunks = []
     screenshots = []
+    pendingShots = []
     startTime = Date.now()
 
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-      ? "video/webm;codecs=vp9"
-      : "video/webm"
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm"
+    const recorder = new MediaRecorder(mediaStream, { mimeType, videoBitsPerSecond: 2_500_000 })
+    mediaRecorder = recorder
 
-    mediaRecorder = new MediaRecorder(mediaStream, {
-      mimeType,
-      videoBitsPerSecond: 2500000,
-    })
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunks.push(event.data)
-      }
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) recordedChunks.push(event.data)
     }
 
-    mediaRecorder.start(1000) // Collect data every second
+    // One promise for "recording is over", whoever stopped it.
+    finished = new Promise<RecordingResult>((resolve) => {
+      recorder.onstop = async () => {
+        await Promise.all(pendingShots)
+        const duration = Math.floor((Date.now() - startTime) / 1000)
+        const videoBlob = new Blob(recordedChunks, { type: "video/webm" })
+        mediaStream?.getTracks().forEach((track) => track.stop())
+        mediaStream = null
+        videoElement = null
+        canvasElement = null
+        mediaRecorder = null
+        resolve({ videoBlob, screenshots: [...screenshots], duration })
+      }
+    })
 
-    // Take screenshots every 3 seconds
-    screenshotInterval = setInterval(() => {
-      takeScreenshot()
-    }, 3000)
-
-    // Take initial screenshot
+    recorder.start(1000)
+    screenshotInterval = setInterval(takeScreenshot, 3000)
     setTimeout(takeScreenshot, 500)
 
-    // Handle stream end (user clicks "Stop sharing")
     mediaStream.getVideoTracks()[0].onended = () => {
-      stopScreenRecording()
+      onEnded?.()
     }
 
     return { success: true }
   } catch (error) {
     console.error("Failed to start recording:", error)
+    const message = error instanceof Error ? error.message : "Failed to start screen recording"
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to start screen recording",
+      error: /Permission denied|NotAllowed/i.test(message) ? "Screen sharing was cancelled." : message,
     }
   }
 }
 
 function takeScreenshot(): void {
   if (!videoElement || !canvasElement || !mediaStream) return
-
-  const track = mediaStream.getVideoTracks()[0]
-  const settings = track.getSettings()
-
-  canvasElement.width = settings.width || 1920
-  canvasElement.height = settings.height || 1080
-
+  const settings = mediaStream.getVideoTracks()[0]?.getSettings()
+  const srcW = settings?.width || videoElement.videoWidth || 1920
+  const srcH = settings?.height || videoElement.videoHeight || 1080
+  // 1280px wide is plenty for reading a screen, and keeps uploads and AI fast.
+  const scale = Math.min(1, 1280 / srcW)
+  canvasElement.width = Math.round(srcW * scale)
+  canvasElement.height = Math.round(srcH * scale)
   const ctx = canvasElement.getContext("2d")
   if (!ctx) return
-
   ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height)
-
-  canvasElement.toBlob(
-    (blob) => {
-      if (blob) {
-        screenshots.push(blob)
-      }
-    },
-    "image/png",
-    0.9
+  pendingShots.push(
+    new Promise<void>((resolve) => {
+      canvasElement!.toBlob(
+        (blob) => {
+          if (blob) {
+            screenshots.push(blob)
+            // Keep the first frame and the most recent ones (the bug is usually at the end).
+            if (screenshots.length > MAX_SCREENSHOTS) screenshots.splice(1, 1)
+          }
+          resolve()
+        },
+        "image/jpeg",
+        0.85
+      )
+    })
   )
 }
 
 export async function stopScreenRecording(): Promise<RecordingResult | null> {
-  return new Promise((resolve) => {
-    if (!mediaRecorder || mediaRecorder.state === "inactive") {
-      resolve(null)
-      return
-    }
-
-    // Clear screenshot interval
-    if (screenshotInterval) {
-      clearInterval(screenshotInterval)
-      screenshotInterval = null
-    }
-
-    // Take final screenshot
+  if (!finished) return null
+  if (screenshotInterval) {
+    clearInterval(screenshotInterval)
+    screenshotInterval = null
+  }
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
     takeScreenshot()
-
-    mediaRecorder.onstop = () => {
-      const duration = Math.floor((Date.now() - startTime) / 1000)
-      const videoBlob = new Blob(recordedChunks, { type: "video/webm" })
-
-      // Stop all tracks
-      if (mediaStream) {
-        mediaStream.getTracks().forEach((track) => track.stop())
-        mediaStream = null
-      }
-
-      // Cleanup
-      videoElement = null
-      canvasElement = null
-      mediaRecorder = null
-
-      resolve({
-        videoBlob,
-        screenshots: [...screenshots],
-        duration,
-      })
-    }
-
     mediaRecorder.stop()
-  })
+  }
+  const result = await finished
+  finished = null
+  return result
 }
 
 export function isRecording(): boolean {

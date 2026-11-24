@@ -1,6 +1,8 @@
 "use client"
 
+import { useCrumbs } from "@/components/shell/workspace-data"
 import { useState, useEffect } from "react"
+import { GettingStarted } from "@/components/getting-started"
 import Link from "next/link"
 import { Bug, Video, Clock, AlertTriangle, FileText } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -44,6 +46,7 @@ function formatStatus(status: string): string {
 }
 
 export default function DashboardPage() {
+  useCrumbs([{ label: "Home" }])
   const [stats, setStats] = useState<DashboardStats>({
     totalReports: 0,
     recordings: 0,
@@ -94,6 +97,8 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-foreground-secondary">Overview of your bug tracking activity</p>
       </div>
+
+      <GettingStarted />
 
       <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (

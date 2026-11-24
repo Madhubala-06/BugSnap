@@ -1,121 +1,84 @@
 # BugSnap
 
-Stop writing bug reports manually. Record your screen, and let AI do the rest.
+Record a bug once. BugSnap captures the screen, clicks, console errors and failed network calls, then writes the bug report for you.
 
-## What is BugSnap?
+**Live:** https://bugsnap-web.vercel.app · **Demo report (no sign-up):** https://bugsnap-web.vercel.app/r/demo · API https://bugsnap-api.vercel.app
 
-BugSnap is an AI-powered bug reporting tool that automates the entire bug documentation process:
+## Features
 
-1. **Record** - Use the Chrome extension to capture your screen while reproducing a bug
-2. **Capture** - Screenshots and console logs are automatically captured during recording
-3. **Analyze** - AI analyzes the recording and generates a detailed bug report
-4. **Report** - Get a complete bug ticket with title, description, severity, and steps to reproduce
+- **Record once, get a full report.** Video, screenshots, console errors with stacks, failed requests with response bodies, clicks, field changes, page and browser details.
+- **AI write-up** (Google Gemini): title, steps, expected vs actual, severity and likely cause. Runs in the background, falls back across models when one is busy. 20 free write-ups per workspace per month on the shared key, unlimited with your own free key.
+- **Works without AI too:** a plain description and steps are built from the timeline.
+- **Fix with AI:** one click copies a prompt for Cursor, Claude Code or Copilot with the exact errors, timeline and a regression test.
+- **Regression test:** a Playwright test generated from the recorded steps. It fails while the bug exists and passes once it is fixed.
+- **MCP server for coding agents:** `https://bugsnap-api.vercel.app/mcp`. Tools: `list_bug_reports`, `get_bug_report`, `get_playwright_test`, `update_bug_status`. Create a key in Settings, then:
+  `claude mcp add --transport http bugsnap https://bugsnap-api.vercel.app/mcp --header "Authorization: Bearer bsk_..."`
+- **Duplicates:** reports with the same error on the same page are grouped ("seen 3 times").
+- **Share:** read-only public links (`/r/<token>`), one-click GitHub issues (pre-filled, nothing is posted for you), Copy as Markdown, CSV export.
+- **Self-serve:** email-code sign-in, private workspaces, getting-started checklist, privacy and terms pages.
 
-No more vague bug descriptions. No more back-and-forth asking "how do I reproduce this?"
-
-## How It Works
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Chrome         │     │  Backend API    │     │  Web Dashboard  │
-│  Extension      │────▶│  + AI Analysis  │────▶│  View & Edit    │
-│  (Record Bug)   │     │  (Process)      │     │  (Manage)       │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-```
-
-### 1. Chrome Extension
-- One-click screen recording
-- Captures video, screenshots, and browser console logs
-- Tracks user clicks and navigation
-
-### 2. AI Analysis
-- Analyzes screenshots to understand the bug
-- Generates bug title and description
-- Suggests severity level (low/medium/high/critical)
-- Creates steps to reproduce
-- Identifies potential root cause
-
-### 3. Web Dashboard
-- View all bug reports
-- Edit and annotate screenshots
-- Rich text editor for adding details
-- Export or share with your team
-
-## Project Structure
+## How it works
 
 ```
-├── apps/
-│   ├── api/          # Backend API (NestJS + Prisma)
-│   ├── extension/    # Chrome extension (Plasmo + React)
-│   └── web/          # Dashboard (Next.js 15)
-└── packages/
-    └── shared/       # Shared types and utilities
+Chrome extension ──▶ API (NestJS) ──▶ Dashboard (Next.js)
+ records screen,      saves report,      timeline, video,
+ clicks, console,     runs Gemini on     screenshots, AI
+ network, page info   screenshots+logs   write-up
 ```
 
-## Tech Stack
+1. Click the BugSnap icon, sign in with your email (6-digit code), press **Start Recording**.
+2. Reproduce the bug in your tab. Stop from the recorder tab, the popup, or Chrome's "Stop sharing" bar.
+3. The report opens in the dashboard with a filterable "What happened" timeline, the video, screenshots, page and browser details, and an AI write-up (title, steps, expected vs actual, likely cause).
 
-| Component | Technology |
-|-----------|------------|
-| Monorepo | Turborepo |
-| Package Manager | pnpm |
-| Language | TypeScript |
-| Backend | NestJS, Prisma, PostgreSQL |
-| Extension | Plasmo, React, Tailwind CSS |
-| Dashboard | Next.js 15, TipTap Editor, Fabric.js |
+### What is captured, and what is not
 
-## Getting Started
+- Captured: console logs and errors (with stack), uncaught errors, failed `fetch`/XHR calls (status and error body), clicks, field changes, page changes, viewport, screen, browser.
+- Never captured: what you type into fields, password fields, request headers. Tokens in URLs (`token`, `key`, `code`, ...), bearer tokens, JWTs and API keys in log text are replaced with `[hidden]`.
 
-### Prerequisites
+## Project layout
 
-- Node.js >= 20
-- pnpm 9.15.0+
-- PostgreSQL database
+| Folder | What |
+|-|-|
+| `apps/extension` | Chrome extension (Plasmo, Manifest V3). `contents/capture-main.ts` runs inside the page; `contents/capture.ts` relays to the extension. |
+| `apps/api` | NestJS + Prisma (Postgres). Email-code login, workspaces, reports, uploads, Gemini. Runs as one Vercel function (`api/index.js`). |
+| `apps/web` | Next.js 15 dashboard and landing page. |
+| `apps/python-api` | Old unused backend. Not deployed. |
 
-### Installation
+## Run locally
+
+Needs Node 20+, pnpm 9 and Postgres.
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Set up environment variables
-cp apps/api/.env.example apps/api/.env
-# Edit .env with your database URL and OpenAI API key
-
-# Run database migrations
-pnpm --filter @bugsnap/api prisma migrate dev
-
-# Start all apps
-pnpm dev
+cp apps/api/.env.example apps/api/.env      # set DATABASE_URL / DIRECT_URL
+pnpm --filter @bugsnap/api exec prisma migrate deploy
+pnpm --filter @bugsnap/api dev               # http://localhost:3001
+PORT=3002 pnpm --filter @bugsnap/web dev     # http://localhost:3002
+pnpm --filter @bugsnap/extension dev         # load apps/extension/build/chrome-mv3-dev
 ```
 
-### Development
+Locally, no email is sent: the sign-in code is shown on the login screen. Add a Gemini key in **Settings** to get AI write-ups (free key at https://aistudio.google.com/apikey).
+
+### Load the extension
+
+1. `pnpm --filter @bugsnap/extension build` (uses `.env.production`, so it talks to the live API). Use `dev` for localhost.
+2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, pick `apps/extension/build/chrome-mv3-prod` (or `chrome-mv3-dev`).
+
+## Tests
 
 ```bash
-# Run all apps
-pnpm dev
-
-# Run specific app
-pnpm --filter @bugsnap/api dev      # API on http://localhost:3001
-pnpm --filter @bugsnap/web dev      # Dashboard on http://localhost:3002
-pnpm --filter @bugsnap/extension dev # Extension (load unpacked from build/)
+pnpm --filter @bugsnap/api test   # builds, then runs node:test (auth, upload checks, log digest, prompt helpers)
 ```
 
-### Load the Chrome Extension
+## Deploy (Vercel)
 
-1. Run `pnpm --filter @bugsnap/extension dev`
-2. Open Chrome and go to `chrome://extensions`
-3. Enable "Developer mode"
-4. Click "Load unpacked" and select `apps/extension/build/chrome-mv3-dev`
+- API: `cd apps/api && vercel deploy --prod`. The build runs `prisma migrate deploy`. Env: `DATABASE_URL` (pooled, with `pgbouncer=true`), `DIRECT_URL`, `APP_SECRET`, `FRONTEND_URL`, `BLOB_READ_WRITE_TOKEN`, `NODE_ENV=production`, SMTP settings, optional `GEMINI_API_KEY`, `SHARED_AI_MONTHLY_LIMIT` (default 20), `GEMINI_MODELS` (comma list, tried in order). The function runs in `sin1` next to the database; AI jobs continue after the response with `waitUntil` (max 300 s).
+- Web: `cd apps/web && vercel deploy --prod`. Env: `NEXT_PUBLIC_API_URL`, optional `NEXT_PUBLIC_EXTENSION_URL` (Chrome Web Store link).
+- Files: Vercel Blob. The extension asks the API for a short-lived upload token that only allows one path inside the user's workspace (`w/<workspaceId>/...`) and uploads straight to storage.
 
-## Usage
+## Security notes
 
-1. Click the BugSnap extension icon in Chrome
-2. Click "Start Recording"
-3. Reproduce the bug on your screen
-4. Click "Stop Recording"
-5. AI analyzes and creates a bug report
-6. View and edit the report in the dashboard
-
-## License
-
-Private
+- Every API route needs a sign-in token except health and the two login routes. Reports from other workspaces return 404.
+- Login codes and sign-in tokens are stored only as SHA-256 hashes. Codes expire after 10 minutes, allow 5 tries, and max 5 codes per 15 minutes per email.
+- Saved Gemini keys are encrypted with AES-256-GCM (`APP_SECRET`) and are sent to Google in a header, never in a URL.
+- The AI only reads screenshots that this workspace uploaded. It never fetches arbitrary URLs.

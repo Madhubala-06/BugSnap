@@ -1,5 +1,6 @@
 "use client"
 
+import { useCrumbs } from "@/components/shell/workspace-data"
 import { useState, useEffect } from "react"
 import { Clock, HardDrive, Image, X, Loader2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ function formatDate(dateString: string): string {
 }
 
 export default function ScreenshotsPage() {
+  useCrumbs([{ label: "Screenshots" }])
   const [screenshots, setScreenshots] = useState<Thumbnail[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -86,7 +88,7 @@ export default function ScreenshotsPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {screenshots.map((screenshot) => (
             <Card
-              key={screenshot.filename}
+              key={screenshot.url}
               className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => setSelectedImage(screenshot)}
             >
@@ -100,12 +102,12 @@ export default function ScreenshotsPage() {
               <CardContent className="p-4">
                 <div>
                   <h3 className="font-medium mb-2 text-foreground truncate text-sm">
-                    {screenshot.filename}
+                    {screenshot.reportTitle || screenshot.filename}
                   </h3>
                   <div className="flex items-center gap-3 text-xs text-foreground-muted">
                     <span className="flex items-center gap-1">
                       <HardDrive className="h-3 w-3" />
-                      {formatFileSize(screenshot.size)}
+                      {screenshot.size ? formatFileSize(screenshot.size) : null}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -131,7 +133,7 @@ export default function ScreenshotsPage() {
           >
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-medium text-foreground truncate">
-                {selectedImage.filename}
+                {selectedImage.reportTitle || selectedImage.filename}
               </h3>
               <div className="flex items-center gap-2">
                 <Button
@@ -158,7 +160,9 @@ export default function ScreenshotsPage() {
                 className="w-full rounded-lg"
               />
               <div className="mt-4 flex items-center gap-4 text-sm text-foreground-secondary">
-                <span>{formatFileSize(selectedImage.size)}</span>
+                {selectedImage.reportId && (
+                  <a href={`/dashboard/reports/${selectedImage.reportId}`} className="text-primary hover:underline">Open report</a>
+                )}
                 <span>{formatDate(selectedImage.createdAt)}</span>
               </div>
             </div>

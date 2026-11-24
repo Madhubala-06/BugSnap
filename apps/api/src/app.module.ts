@@ -11,6 +11,11 @@ import { WorkspacesModule } from "./workspaces/workspaces.module"
 import { SettingsModule } from "./settings/settings.module"
 import { AIModule } from "./ai/ai.module"
 import { HealthController } from "./health.controller"
+import { AuthModule } from "./auth/auth.module"
+import { McpModule } from "./mcp/mcp.module"
+import { TriageModule } from "./triage/triage.module"
+import { TeamsModule } from "./teams/teams.module"
+import { WidgetModule } from "./widget/widget.module"
 
 @Module({
   imports: [
@@ -21,6 +26,7 @@ import { HealthController } from "./health.controller"
       storage: memoryStorage(),
     }),
     PrismaModule,
+    AuthModule,
     SettingsModule,
     AIModule,
     StorageModule,
@@ -28,6 +34,10 @@ import { HealthController } from "./health.controller"
     ReportsModule,
     UsersModule,
     WorkspacesModule,
+    McpModule,
+    TriageModule,
+    TeamsModule,
+    WidgetModule,
   ],
   controllers: [HealthController],
 })

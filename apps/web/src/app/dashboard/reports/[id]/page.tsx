@@ -1,497 +1,630 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { toast } from "sonner"
 import {
-  ArrowLeft,
-  Video,
-  Image,
-  Terminal,
+  Bot,
+  ChevronDown,
+  Copy,
+  FlaskConical,
+  Github,
   Globe,
+  Image as ImageIcon,
+  Layers,
+  Link2,
   Loader2,
-  Clock,
-  User,
+  MoreHorizontal,
   Sparkles,
-  Save,
-  Check,
   Trash2,
 } from "lucide-react"
+import {
+  analyzeReport,
+  deleteBugReport,
+  getAiStatus,
+  getBugReport,
+  getReportText,
+  saveGithubRepo,
+  setReportShared,
+  updateBugReport,
+  uploadImage,
+  type BugReport,
+} from "@/lib/api"
+import { reportToMarkdown, downloadText } from "@/lib/export"
+import { useCrumbs } from "@/components/shell/workspace-data"
+import { useMe } from "@/components/auth-gate"
+import { can } from "@/lib/auth"
+import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, MenuHint } from "@/components/kit/menu"
+import { Dialog, DialogContent } from "@/components/kit/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger, Count } from "@/components/kit/tabs"
+import { ago, bugId, SeverityPill, timeAgo, Avatar } from "@/components/kit/bits"
+import { Tip } from "@/components/kit/tooltip"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { RichTextEditor } from "@/components/editor/rich-text-editor"
 import { ImageEditor } from "@/components/editor/image-editor"
-import {
-  getBugReport,
-  updateBugReportStatus,
-  updateBugReport,
-  deleteBugReport,
-  type BugReport,
-  type Severity,
-  type ReportStatus,
-} from "@/lib/api"
+import { InlineCode } from "@/components/report/inline-code"
+import { PlaywrightCard } from "@/components/report/playwright-card"
+import { githubIssueUrl } from "@/components/report/report-actions"
+import { EventList, PlayerProvider, SyncedPlayer, timeEvents } from "@/components/report/synced-player"
+import { ReportDetails } from "@/components/report/report-details"
+import { ActivityFeed } from "@/components/report/activity-feed"
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+const strip = (html?: string | null) => (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+
+function shortBrowser(ua?: string) {
+  if (!ua) return ""
+  const chrome = ua.match(/Chrome\/(\d+)/)
+  const os = /Mac OS X/.test(ua) ? "macOS" : /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /Linux/.test(ua) ? "Linux" : /iPhone|iPad/.test(ua) ? "iOS" : ""
+  return [chrome ? `Chrome ${chrome[1]}` : "", os].filter(Boolean).join(" · ")
 }
 
-function severityToVariant(severity: Severity): "low" | "medium" | "high" | "critical" {
-  return severity.toLowerCase() as "low" | "medium" | "high" | "critical"
-}
-
-const statusOptions: ReportStatus[] = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "WONT_FIX"]
-
-export default function BugReportDetailPage() {
+export default function ReportPage() {
   const params = useParams()
   const router = useRouter()
+  const id = params.id as string
   const [report, setReport] = useState<BugReport | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [updating, setUpdating] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<{ url: string; index: number } | null>(null)
+  const [missing, setMissing] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [descDirty, setDescDirty] = useState(false)
+  const [editingShot, setEditingShot] = useState<{ url: string; index: number } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [repoDialog, setRepoDialog] = useState(false)
+  const [repo, setRepo] = useState<string | null>(null)
+  const [repoInput, setRepoInput] = useState("")
+  const [activityKey, setActivityKey] = useState(0)
+  const autoRetried = useRef(false)
+  const me = useMe()
+  const canEdit = can(me, "member")
 
-  const id = params.id as string
+  const merge = useCallback((patch: Partial<BugReport>) => {
+    setReport((r) => (r ? { ...r, ...patch } : r))
+    setActivityKey((k) => k + 1)
+  }, [])
 
-  useEffect(() => {
-    async function fetchReport() {
-      try {
-        const data = await getBugReport(id)
-        setReport(data)
-        setTitle(data.title)
-        setDescription(data.description || "")
-      } catch (err) {
-        console.error("Failed to fetch report:", err)
-      } finally {
-        setLoading(false)
-      }
+  const load = useCallback(async () => {
+    try {
+      const data = await getBugReport(id)
+      setReport(data)
+      setTitle(data.title)
+      setDescription(data.description || "")
+      setDescDirty(false)
+    } catch {
+      setMissing(true)
     }
-    if (id) fetchReport()
   }, [id])
 
-  const handleStatusChange = async (newStatus: ReportStatus) => {
-    if (!report) return
-    setUpdating(true)
-    try {
-      const updated = await updateBugReportStatus(report.id, newStatus)
-      setReport({ ...report, status: updated.status })
-    } catch (err) {
-      console.error("Failed to update status:", err)
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTitle(e.target.value)
-    setHasChanges(true)
-    setSaved(false)
-  }
-
-  const handleDescriptionChange = (content: string) => {
-    setDescription(content)
-    setHasChanges(true)
-    setSaved(false)
-  }
-
-  const handleSave = useCallback(async () => {
-    if (!report || !hasChanges) return
-    setSaving(true)
-    try {
-      await updateBugReport(report.id, { title, description })
-      setReport({ ...report, title, description })
-      setHasChanges(false)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (err) {
-      console.error("Failed to save:", err)
-    } finally {
-      setSaving(false)
-    }
-  }, [report, title, description, hasChanges])
-
-  // Keyboard shortcut for save
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault()
-        handleSave()
+    load()
+    getAiStatus().then((s) => setRepo(s.githubRepo)).catch(() => undefined)
+  }, [load])
+
+  useCrumbs(
+    report
+      ? [
+          ...(report.project ? [{ label: report.project.name, href: `/dashboard/reports?project=${report.project.id}` }] : [{ label: "All reports", href: "/dashboard/reports?view=all" }]),
+          { label: bugId(report.number), mono: true },
+        ]
+      : []
+  )
+
+  // AI write-up in the background: poll while pending, retry once if it failed earlier.
+  const pending = report?.aiStatus === "pending"
+  useEffect(() => {
+    if (!pending) return
+    let stop = false
+    const started = Date.now()
+    const poll = async () => {
+      if (stop) return
+      const fresh = await getBugReport(id).catch(() => null)
+      if (fresh && fresh.aiStatus !== "pending") {
+        setReport(fresh)
+        setTitle(fresh.title)
+        if (!descDirty) setDescription(fresh.description || "")
+        setActivityKey((k) => k + 1)
+        if (fresh.aiStatus === "done") toast.success("AI write-up is ready")
+        return
       }
+      if (Date.now() - started < 6 * 60 * 1000) setTimeout(poll, 4000)
     }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [handleSave])
-
-  const handleDelete = async () => {
-    if (!report) return
-    setDeleting(true)
-    try {
-      await deleteBugReport(report.id)
-      router.push("/dashboard/reports")
-    } catch (err) {
-      console.error("Failed to delete:", err)
-      setDeleting(false)
-      setShowDeleteConfirm(false)
+    const t = setTimeout(poll, 4000)
+    return () => {
+      stop = true
+      clearTimeout(t)
     }
-  }
+  }, [pending, id, descDirty])
 
-  if (loading) {
+  useEffect(() => {
+    if (!report || autoRetried.current || report.aiStatus !== "failed" || !canEdit) return
+    autoRetried.current = true
+    analyzeReport(report.id).then((r) => r.ok && merge({ aiStatus: "pending" })).catch(() => undefined)
+  }, [report, merge])
+
+  const info = report?.browserInfo ?? {}
+  const logs = useMemo(() => (report?.session?.logs?.length ? report.session.logs : info.logs ?? []), [report, info.logs])
+  const events = useMemo(() => timeEvents(logs, info.startedAt), [logs, info.startedAt])
+  const keyMoments = events.filter((e) => e.kind === "error" || e.kind === "click" || e.kind === "input" || (e.kind === "nav" && e.t > 0.5))
+  const consoleEvents = events.filter((e) => e.log.type === "CONSOLE" || e.log.type === "ERROR")
+  const networkLogs = logs.filter((l) => l.type === "NETWORK")
+  const errorCount = logs.filter((l) => l.level.toUpperCase() === "ERROR").length
+  const shots = info.screenshotUrls ?? []
+  const page = info.page
+
+  if (missing) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="p-10 text-center">
+        <p className="text-foreground">This report does not exist or you do not have access.</p>
+        <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/reports")}>Back to reports</Button>
       </div>
     )
   }
-
   if (!report) {
     return (
-      <div className="p-8">
-        <p className="text-foreground-secondary">Bug report not found</p>
+      <div className="grid grid-cols-[1fr_320px] gap-0" aria-busy="true">
+        <div className="space-y-4 p-6">
+          <div className="h-6 w-40 animate-pulse rounded bg-background-secondary" />
+          <div className="h-8 w-3/4 animate-pulse rounded bg-background-secondary" />
+          <div className="aspect-video animate-pulse rounded-xl bg-background-secondary" />
+        </div>
+        <div className="border-l border-border bg-background-secondary/40" />
       </div>
     )
   }
 
-  const recordingUrl = report.browserInfo?.recordingUrl || report.session?.recording?.url
-  const screenshotUrls = report.browserInfo?.screenshotUrls || []
-  const logs = report.session?.logs || []
+  const saveTitle = async () => {
+    const next = title.trim()
+    if (!next || next === report.title) return setTitle(report.title)
+    try {
+      await updateBugReport(report.id, { title: next })
+      merge({ title: next })
+    } catch {
+      toast.error("Could not rename")
+      setTitle(report.title)
+    }
+  }
+
+  const saveDescription = async () => {
+    if (!descDirty) return
+    try {
+      await updateBugReport(report.id, { description })
+      setDescDirty(false)
+      toast.success("Description saved")
+    } catch {
+      toast.error("Could not save the description")
+    }
+  }
+
+  const copy = async (text: string, message: string) => {
+    await navigator.clipboard.writeText(text)
+    toast.success(message)
+  }
+
+  const fixWithAi = async () => {
+    const t = toast.loading("Preparing the prompt…")
+    try {
+      await navigator.clipboard.writeText(await getReportText(report.id, "fix-prompt"))
+      toast.success("Fix prompt copied. Paste it into Cursor, Claude Code or Copilot.", { id: t })
+    } catch {
+      toast.error("Could not prepare the prompt", { id: t })
+    }
+  }
+
+  const share = async () => {
+    try {
+      const token = report.shareToken ?? (await setReportShared(report.id, true)).shareToken
+      merge({ shareToken: token })
+      await copy(`${window.location.origin}/r/${token}`, "Share link copied. Anyone with it can view this report.")
+    } catch {
+      toast.error("Could not create a share link")
+    }
+  }
+
+  const openGithub = (target: string) => window.open(githubIssueUrl(target, report, window.location.origin), "_blank", "noopener,noreferrer")
+
+  const generate = async () => {
+    try {
+      const res = await analyzeReport(report.id)
+      if (!res.ok) throw new Error(res.error)
+      merge({ aiStatus: "pending" })
+      toast("The AI is writing the report. It usually takes under a minute.")
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : "Could not start the AI write-up")
+    }
+  }
+
+  const descriptionText = strip(description)
 
   return (
-    <div className="p-8 max-w-6xl">
-      {/* Header */}
-      <div className="mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/dashboard/reports")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Reports
-        </Button>
-
-        <div className="flex items-start justify-between">
-          <div className="flex-1 mr-4">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="font-mono text-sm text-foreground-muted">{report.id.slice(0, 8)}</span>
-              <Badge variant={severityToVariant(report.severity)}>{report.severity.toLowerCase()}</Badge>
-            </div>
-            <input
-              type="text"
-              value={title}
-              onChange={handleTitleChange}
-              className="text-2xl font-bold text-foreground bg-transparent border-none outline-none w-full focus:ring-0 p-0"
-              placeholder="Bug title..."
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSave}
-              disabled={saving || !hasChanges}
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : saved ? (
-                <>
-                  <Check className="h-4 w-4 mr-1" />
-                  Saved
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-1" />
-                  Save
-                </>
-              )}
-            </Button>
-            <select
-              value={report.status}
-              onChange={(e) => handleStatusChange(e.target.value as ReportStatus)}
-              disabled={updating}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-            >
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status.replace("_", " ")}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDeleteConfirm(true)}
-              className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 mt-4 text-sm text-foreground-secondary">
-          <span className="flex items-center gap-1">
-            <User className="h-4 w-4" />
-            {report.reporter?.name || "Anonymous"}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock className="h-4 w-4" />
-            {formatDate(report.createdAt)}
-          </span>
-          {report.url && (
-            <a
-              href={report.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-primary hover:underline"
-            >
-              <Globe className="h-4 w-4" />
-              {new URL(report.url).hostname}
-            </a>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* AI Generated Summary */}
-          {report.aiSummary && (
-            <div className="bg-primary-muted/60 border border-primary/25 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">AI Generated Summary</span>
+    <PlayerProvider events={events}>
+      <div className="grid min-h-full grid-cols-1 xl:grid-cols-[minmax(0,1fr)_330px]">
+        <div className="min-w-0 px-6 pb-16 pt-5">
+          {/* Header */}
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-mono text-foreground-muted">{bugId(report.number)}</span>
+                <SeverityPill severity={report.severity} />
+                {report.aiStatus === "done" && (
+                  <span className="inline-flex items-center gap-1 text-primary"><Sparkles className="h-3.5 w-3.5" />AI write-up</span>
+                )}
+                {pending && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary" role="status">
+                    <Loader2 className="h-3 w-3 animate-spin" />AI is writing the report…
+                  </span>
+                )}
+                {(report.duplicateCount ?? 1) > 1 && (
+                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"><Layers className="h-3.5 w-3.5" />Seen {report.duplicateCount} times</span>
+                )}
               </div>
-              <p className="text-foreground-secondary text-sm">{report.aiSummary}</p>
+              <textarea
+                value={title}
+                onChange={(e) => setTitle(e.target.value.replace(/\n/g, " "))}
+                onBlur={saveTitle}
+                readOnly={!canEdit}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), e.currentTarget.blur())}
+                rows={1}
+                ref={(el) => {
+                  if (el) {
+                    el.style.height = "auto"
+                    el.style.height = `${el.scrollHeight}px`
+                  }
+                }}
+                aria-label="Bug title"
+                className="block w-full resize-none overflow-hidden rounded-md bg-transparent text-[22px] font-semibold leading-tight tracking-tight text-foreground outline-none hover:bg-background-secondary/60 focus:bg-background-secondary/60"
+              />
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-foreground-muted">
+                {!report.reporter && info.source === "widget" && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="rounded bg-sky-500/10 px-1.5 text-[11px] text-sky-600 dark:text-sky-400">website</span>
+                    {info.reporter?.email ?? "A visitor"} reported {ago(report.createdAt)}
+                  </span>
+                )}
+                {report.reporter && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Avatar name={report.reporter.name} email={report.reporter.email} size={16} />
+                    {report.reporter.name} recorded {ago(report.createdAt)}
+                  </span>
+                )}
+                {(page?.url || report.url) && (
+                  <>
+                    <span>·</span>
+                    <a href={page?.url || report.url || undefined} target="_blank" rel="noreferrer" className="inline-flex max-w-[360px] items-center gap-1 truncate text-primary hover:underline">
+                      <Globe className="h-3.5 w-3.5 shrink-0" />
+                      {(page?.url || report.url || "").replace(/^https?:\/\//, "").replace(/\?.*$/, "")}
+                    </a>
+                  </>
+                )}
+                {page?.userAgent && <><span>·</span><span>{shortBrowser(page.userAgent)}</span></>}
+                {page?.viewport?.width ? <><span>·</span><span className="font-mono">{page.viewport.width}×{page.viewport.height}</span></> : null}
+              </div>
             </div>
-          )}
 
-          {/* Rich Text Editor */}
-          <div>
-            <label className="text-sm font-medium text-foreground-secondary mb-2 block">
-              Description
-            </label>
-            <RichTextEditor
-              content={description}
-              onChange={handleDescriptionChange}
-              placeholder="Describe the bug in detail... Use formatting to make it clear."
-            />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Tip label="Copies a prompt with the exact errors, timeline and a test">
+                <button onClick={fixWithAi} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,.15)] hover:bg-primary-hover">
+                  <Bot className="h-4 w-4" />Fix with AI
+                </button>
+              </Tip>
+              <Menu>
+                <MenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium outline-none hover:bg-background-tertiary">
+                  <Github className="h-4 w-4" />Create issue<ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
+                </MenuTrigger>
+                <MenuContent align="end">
+                  <MenuItem onSelect={() => (repo ? openGithub(repo) : setRepoDialog(true))}>
+                    <Github className="h-4 w-4" />GitHub<MenuHint>{repo ?? "choose repo"}</MenuHint>
+                  </MenuItem>
+                  <MenuItem disabled>Linear<MenuHint>soon</MenuHint></MenuItem>
+                  <MenuItem disabled>Jira<MenuHint>soon</MenuHint></MenuItem>
+                  {repo && (
+                    <>
+                      <MenuSeparator />
+                      <MenuItem onSelect={() => setRepoDialog(true)}>Change GitHub repository</MenuItem>
+                    </>
+                  )}
+                </MenuContent>
+              </Menu>
+              {canEdit && <Tip label={report.shareToken ? "Copy the share link" : "Create a read-only link"}>
+                <button onClick={share} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium hover:bg-background-tertiary">
+                  <Link2 className="h-4 w-4" />Share
+                </button>
+              </Tip>}
+              <Menu>
+                <MenuTrigger className="grid h-8 w-8 place-items-center rounded-lg text-foreground-secondary outline-none hover:bg-background-tertiary" aria-label="More actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </MenuTrigger>
+                <MenuContent align="end">
+                  <MenuItem onSelect={() => copy(reportToMarkdown(report, window.location.origin), "Copied as Markdown")}><Copy className="h-4 w-4" />Copy as Markdown</MenuItem>
+                  <MenuItem disabled={pending || !canEdit} onSelect={generate}><Sparkles className="h-4 w-4" />{report.aiStatus === "done" ? "Write again with AI" : "Generate AI write-up"}</MenuItem>
+                  <MenuItem onSelect={async () => downloadText(`${bugId(report.number).toLowerCase()}.spec.ts`, await getReportText(report.id, "playwright"), "text/plain")}>
+                    <FlaskConical className="h-4 w-4" />Download regression test
+                  </MenuItem>
+                  {report.shareToken && canEdit && (
+                    <MenuItem onSelect={async () => { await setReportShared(report.id, false); merge({ shareToken: null }); toast.success("Stopped sharing") }}>
+                      <Link2 className="h-4 w-4" />Stop sharing
+                    </MenuItem>
+                  )}
+                  <MenuSeparator />
+                  <MenuItem disabled={!canEdit} onSelect={() => setConfirmDelete(true)} className="text-red-400 data-[highlighted]:text-red-400"><Trash2 className="h-4 w-4" />Delete report</MenuItem>
+                </MenuContent>
+              </Menu>
+            </div>
           </div>
 
-          {/* Recording */}
-          {recordingUrl && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Video className="h-5 w-5" />
-                  Recording
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <video
-                  src={recordingUrl}
-                  controls
-                  className="w-full rounded-lg bg-black"
-                  style={{ maxHeight: "400px" }}
-                />
-              </CardContent>
-            </Card>
-          )}
+          {/* Video */}
+          {info.recordingUrl ? (
+            <div className="mt-5"><SyncedPlayer src={info.recordingUrl} /></div>
+          ) : shots[0] ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={shots[shots.length - 1]} alt="Last screenshot" className="mt-5 w-full rounded-xl border border-border" />
+          ) : null}
 
-          {/* Screenshots */}
-          {screenshotUrls.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Image className="h-5 w-5" />
-                  Screenshots ({screenshotUrls.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {screenshotUrls.map((url, index) => (
-                    <img
-                      key={index}
-                      src={url}
-                      alt={`Screenshot ${index + 1}`}
-                      className="rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => setSelectedImage({ url, index })}
-                    />
-                  ))}
+          <Tabs defaultValue="overview" className="mt-6">
+            <TabsList>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline <Count>{events.length}</Count></TabsTrigger>
+              <TabsTrigger value="console">Console <Count tone={errorCount ? "red" : undefined}>{consoleEvents.length}</Count></TabsTrigger>
+              <TabsTrigger value="network">Network <Count tone={networkLogs.some((l) => l.level.toUpperCase() === "ERROR") ? "red" : undefined}>{networkLogs.length}</Count></TabsTrigger>
+              <TabsTrigger value="test"><FlaskConical className="h-3.5 w-3.5" />Regression test</TabsTrigger>
+              <TabsTrigger value="shots">Screenshots <Count>{shots.length}</Count></TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="mt-4 space-y-4 outline-none">
+              {info.userNote && (
+                <blockquote className="rounded-xl border border-sky-500/25 bg-sky-500/5 p-4">
+                  <p className="mb-1 text-xs font-medium text-sky-600 dark:text-sky-400">
+                    {info.reporter?.email ? `${info.reporter.email} wrote` : "The person who reported it wrote"}
+                  </p>
+                  <p className="whitespace-pre-wrap text-[14px] text-foreground">{info.userNote}</p>
+                </blockquote>
+              )}
+              {report.aiStatus !== "done" && !pending && canEdit && (
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <p className="flex-1 text-sm text-foreground-secondary">
+                    {report.aiStatus === "failed"
+                      ? report.browserInfo?.aiError || "The AI could not write this one yet."
+                      : "Let the AI write the summary, steps, expected vs actual and the likely cause."}
+                  </p>
+                  <Button size="sm" onClick={generate}>Generate AI write-up</Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
 
-          {/* Console Logs */}
-          {logs.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Terminal className="h-5 w-5" />
-                  Console Logs ({logs.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-background border border-border rounded-lg p-4 max-h-80 overflow-auto font-mono text-sm">
-                  {logs.map((log, index) => (
-                    <div
-                      key={index}
-                      className={`py-1 ${
-                        log.level === "error"
-                          ? "text-destructive"
-                          : log.level === "warn"
-                          ? "text-warning"
-                          : "text-foreground-secondary"
-                      }`}
-                    >
-                      <span className="text-foreground-muted">[{log.type}]</span> {log.message}
-                    </div>
-                  ))}
+              <div className="rounded-xl border border-border">
+                <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold">
+                    What happened
+                    {report.aiStatus === "done" && <span className="text-xs font-normal text-primary">written by AI, edit freely</span>}
+                  </h2>
+                  {descDirty && (
+                    <Button size="sm" onClick={saveDescription}>Save</Button>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                <div className="px-1 [&_.ProseMirror]:min-h-[64px]" onBlur={saveDescription}>
+                  <RichTextEditor
+                    editable={canEdit}
+                    content={description}
+                    onChange={(c) => {
+                      setDescription(c)
+                      setDescDirty(strip(c) !== strip(report.description))
+                    }}
+                    placeholder="Describe what went wrong…"
+                  />
+                </div>
+              </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* AI Insights */}
-          {(report.aiRootCause || (report.aiSuggestions && report.aiSuggestions.length > 0)) && (
-            <Card className="bg-primary-muted/50 border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2 text-primary">
-                  <Sparkles className="h-5 w-5" />
-                  AI Insights
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                {report.stepsToReproduce?.length > 0 && (
+                  <section className="rounded-xl border border-border p-4">
+                    <h2 className="mb-2 text-sm font-semibold">Steps to reproduce</h2>
+                    <ol className="list-decimal space-y-1.5 pl-5 text-[13.5px] text-foreground-secondary">
+                      {report.stepsToReproduce.map((s, i) => <li key={i}><InlineCode text={s.replace(/^Step \d+:\s*/i, "")} /></li>)}
+                    </ol>
+                  </section>
+                )}
                 {report.aiRootCause && (
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">Root Cause</h4>
-                    <p className="text-foreground-secondary text-sm">{report.aiRootCause}</p>
-                  </div>
+                  <section className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+                    <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary"><Sparkles className="h-4 w-4" />Likely cause</h2>
+                    <p className="text-[13.5px] text-foreground-secondary"><InlineCode text={report.aiRootCause} /></p>
+                    {report.aiSuggestions?.length > 0 && (
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] text-foreground-secondary">
+                        {report.aiSuggestions.slice(0, 4).map((s, i) => <li key={i}><InlineCode text={s} /></li>)}
+                      </ul>
+                    )}
+                  </section>
                 )}
-
-                {report.aiSuggestions && report.aiSuggestions.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">Suggestions</h4>
-                    <ul className="list-disc list-inside text-foreground-secondary text-sm space-y-1">
-                      {report.aiSuggestions.map((suggestion, i) => (
-                        <li key={i}>{suggestion}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Steps to Reproduce */}
-          {report.stepsToReproduce && report.stepsToReproduce.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Steps to Reproduce</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ol className="list-decimal list-inside text-foreground-secondary text-sm space-y-2">
-                  {report.stepsToReproduce.map((step, i) => (
-                    <li key={i}>{step}</li>
-                  ))}
-                </ol>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Expected vs Actual */}
-          {(report.expectedResult || report.actualResult) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Expected vs Actual</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 {report.expectedResult && (
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">Expected</h4>
-                    <p className="text-foreground-secondary text-sm">{report.expectedResult}</p>
-                  </div>
+                  <section className="rounded-xl border border-border p-4">
+                    <h2 className="mb-2 text-sm font-semibold">Expected</h2>
+                    <p className="text-[13.5px] text-foreground-secondary"><InlineCode text={report.expectedResult} /></p>
+                  </section>
                 )}
                 {report.actualResult && (
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">Actual</h4>
-                    <p className="text-foreground-secondary text-sm">{report.actualResult}</p>
-                  </div>
+                  <section className="rounded-xl border border-border p-4">
+                    <h2 className="mb-2 text-sm font-semibold">Actual</h2>
+                    <p className="text-[13.5px] text-foreground-secondary"><InlineCode text={report.actualResult} /></p>
+                  </section>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+
+              {keyMoments.length > 0 && (
+                <section>
+                  <h2 className="mb-2 text-sm font-semibold">Key moments <span className="font-normal text-foreground-muted">· click to jump in the video</span></h2>
+                  <EventList events={keyMoments} />
+                </section>
+              )}
+            </TabsContent>
+
+            <TabsContent value="timeline" className="mt-4 outline-none">
+              <EventList events={events} empty="No events were captured for this recording." />
+              {(info.droppedLogs ?? 0) > 0 && <p className="mt-2 text-xs text-foreground-muted">{info.droppedLogs} more events were not kept (limit 1,000).</p>}
+            </TabsContent>
+
+            <TabsContent value="console" className="mt-4 outline-none">
+              <EventList events={consoleEvents} empty="No console messages." />
+            </TabsContent>
+
+            <TabsContent value="network" className="mt-4 outline-none">
+              {networkLogs.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-foreground-muted">No requests were captured.</p>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-border">
+                  <table className="w-full table-fixed text-[12.5px]">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs text-foreground-muted">
+                        <th className="w-16 px-3 py-2 font-normal">Method</th>
+                        <th className="px-3 py-2 font-normal">URL</th>
+                        <th className="w-16 px-3 py-2 font-normal">Status</th>
+                        <th className="w-20 px-3 py-2 font-normal">Time</th>
+                        <th className="w-[34%] px-3 py-2 font-normal">Response</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {networkLogs.map((l, i) => {
+                        const d = (l.data ?? {}) as Record<string, unknown>
+                        const bad = l.level.toUpperCase() === "ERROR"
+                        return (
+                          <tr key={i} className="border-b border-border last:border-0">
+                            <td className="px-3 py-2 font-mono">{String(d.method ?? "")}</td>
+                            <td className="truncate px-3 py-2 font-mono text-foreground-secondary" title={String(d.url ?? l.message)}>{String(d.url ?? l.message).replace(/^https?:\/\/[^/]+/, "")}</td>
+                            <td className={`px-3 py-2 font-mono ${bad ? "text-red-400" : "text-emerald-400"}`}>{String(d.status ?? (bad ? "failed" : ""))}</td>
+                            <td className="px-3 py-2 font-mono text-foreground-muted">{typeof d.duration === "number" ? `${d.duration}ms` : ""}</td>
+                            <td className="truncate px-3 py-2 font-mono text-foreground-muted" title={String(d.responseBody ?? "")}>{String(d.responseBody ?? d.error ?? "")}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="test" className="mt-4 outline-none">
+              <PlaywrightCard reportId={report.id} />
+            </TabsContent>
+
+            <TabsContent value="shots" className="mt-4 outline-none">
+              {shots.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-foreground-muted">No screenshots.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  {shots.map((url, i) => (
+                    <button key={url} onClick={() => setEditingShot({ url, index: i })} className="group relative overflow-hidden rounded-lg border border-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Screenshot ${i + 1}`} className="w-full" />
+                      <span className="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-black/60 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        <ImageIcon className="h-3.5 w-3.5" />Annotate
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
+
+        {/* Right panel */}
+        <aside className="space-y-6 border-t border-border bg-background-secondary/40 p-5 xl:border-l xl:border-t-0">
+          <section>
+            <h2 className="mb-2 text-[11.5px] font-medium text-foreground-muted">Details</h2>
+            <ReportDetails report={report} onChange={merge} readOnly={!canEdit} />
+          </section>
+
+          {report.duplicates && report.duplicates.length > 0 && (
+            <section>
+              <h2 className="mb-2 flex items-center gap-1.5 text-[11.5px] font-medium text-foreground-muted">
+                <Layers className="h-3.5 w-3.5 text-amber-400" />Seen {report.duplicates.length + 1} times
+              </h2>
+              <ul className="space-y-1">
+                {report.duplicates.slice(0, 5).map((d) => (
+                  <li key={d.id}>
+                    <a href={`/dashboard/reports/${d.id}`} className="flex justify-between gap-2 rounded-md px-1.5 py-1 text-[12.5px] text-foreground-secondary hover:bg-background-tertiary hover:text-foreground">
+                      <span className="truncate">{d.title}</span>
+                      <span className="shrink-0 text-foreground-muted">{timeAgo(d.createdAt)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {page && (
+            <section>
+              <h2 className="mb-2 text-[11.5px] font-medium text-foreground-muted">Environment</h2>
+              <dl className="grid grid-cols-[84px_1fr] gap-y-1 px-1.5 text-[12.5px]">
+                {page.userAgent && <><dt className="text-foreground-muted">Browser</dt><dd className="text-foreground-secondary">{shortBrowser(page.userAgent)}</dd></>}
+                {page.viewport?.width ? <><dt className="text-foreground-muted">Viewport</dt><dd className="font-mono text-foreground-secondary">{page.viewport.width} × {page.viewport.height}</dd></> : null}
+                {page.screen && <><dt className="text-foreground-muted">Screen</dt><dd className="font-mono text-foreground-secondary">{page.screen.width} × {page.screen.height} @{page.screen.pixelRatio}x</dd></>}
+                {page.language && <><dt className="text-foreground-muted">Language</dt><dd className="text-foreground-secondary">{page.language}</dd></>}
+                {info.duration ? <><dt className="text-foreground-muted">Recording</dt><dd className="text-foreground-secondary">{info.duration}s</dd></> : null}
+              </dl>
+            </section>
+          )}
+
+          <section>
+            <h2 className="mb-3 text-[11.5px] font-medium text-foreground-muted">Activity</h2>
+            <ActivityFeed reportId={report.id} refreshKey={activityKey} />
+          </section>
+        </aside>
       </div>
 
-      {/* Image Editor Modal */}
-      {selectedImage && (
+      {editingShot && (
         <ImageEditor
-          imageUrl={selectedImage.url}
-          onClose={() => setSelectedImage(null)}
-          onSave={(dataUrl) => {
-            if (report?.browserInfo?.screenshotUrls) {
-              const newUrls = [...report.browserInfo.screenshotUrls]
-              newUrls[selectedImage.index] = dataUrl
-              setReport({
-                ...report,
-                browserInfo: {
-                  ...report.browserInfo,
-                  screenshotUrls: newUrls,
-                },
-              })
-              setHasChanges(true)
+          imageUrl={editingShot.url}
+          onClose={() => setEditingShot(null)}
+          onSave={async (dataUrl) => {
+            const next = [...shots]
+            try {
+              next[editingShot.index] = await uploadImage(dataUrl)
+              await updateBugReport(report.id, { screenshotUrls: next })
+              merge({ browserInfo: { ...info, screenshotUrls: next } })
+              toast.success("Screenshot saved")
+            } catch {
+              toast.error("Could not save the screenshot")
             }
           }}
         />
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-2">Delete Bug Report</h3>
-            <p className="text-foreground-secondary mb-6">
-              Are you sure you want to delete this bug report? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleting}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Delete
-              </Button>
-            </div>
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent title={`Delete ${bugId(report.number)}?`} description="The report, its video and screenshots are deleted for good.">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            <Button
+              className="bg-red-500 hover:bg-red-600"
+              onClick={async () => {
+                await deleteBugReport(report.id)
+                toast.success(`${bugId(report.number)} deleted`)
+                router.push("/dashboard/reports")
+              }}
+            >
+              Delete
+            </Button>
           </div>
-        </div>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={repoDialog} onOpenChange={setRepoDialog}>
+        <DialogContent title="Which GitHub repository?" description="GitHub opens with the issue filled in. Nothing is posted for you.">
+          <form
+            className="flex gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              try {
+                const saved = await saveGithubRepo(repoInput)
+                setRepo(saved.githubRepo)
+                setRepoDialog(false)
+                if (saved.githubRepo) openGithub(saved.githubRepo)
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Could not save")
+              }
+            }}
+          >
+            <Input autoFocus value={repoInput} onChange={(e) => setRepoInput(e.target.value)} placeholder={repo ?? "owner/repo"} />
+            <Button type="submit" disabled={!repoInput.trim()}>Save and open</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </PlayerProvider>
   )
 }

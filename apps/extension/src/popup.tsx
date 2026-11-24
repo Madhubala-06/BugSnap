@@ -1,9 +1,69 @@
 import { useEffect, useState } from "react"
 import type { RecordingState } from "./lib/types"
+import { getAuth, requestCode, signOut, verifyCode, type StoredAuth } from "./lib/auth"
+import { DEFAULT_APP_URL } from "./lib/storage"
 import "../style.css"
 import logoUrl from "data-base64:~assets/icon.png"
 
+function SignIn({ onDone }: { onDone: (auth: StoredAuth) => void }) {
+  const [step, setStep] = useState<"email" | "code">("email")
+  const [email, setEmail] = useState("")
+  const [code, setCode] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [devCode, setDevCode] = useState<string | null>(null)
+
+  const send = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await requestCode(email)
+      setDevCode(res.devCode ?? null)
+      setStep("code")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the code")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const verify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      onDone(await verifyCode(email, code))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in")
+      setBusy(false)
+    }
+  }
+
+  const input = "w-full rounded-lg border border-[#2a2a2f] bg-[#18181b] px-3 py-2 text-sm text-white placeholder:text-[#5c5c64] focus:border-[#3b82f6] focus:outline-none"
+  const button = "w-full rounded-lg bg-[#3b82f6] py-2.5 text-sm font-medium text-white hover:bg-[#2563eb] disabled:opacity-60"
+
+  return step === "email" ? (
+    <form onSubmit={send} className="space-y-3 p-4">
+      <p className="text-sm text-[#a1a1aa]">Sign in to save bug reports to your workspace. We email you a 6-digit code.</p>
+      <input className={input} type="email" required autoFocus placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+      {error && <p className="text-xs text-[#f87171]">{error}</p>}
+      <button className={button} disabled={busy || !email}>{busy ? "Sending..." : "Email me a code"}</button>
+    </form>
+  ) : (
+    <form onSubmit={verify} className="space-y-3 p-4">
+      <p className="text-sm text-[#a1a1aa]">Enter the code we sent to <span className="text-white">{email}</span>.</p>
+      {devCode && <p className="rounded-md bg-[#18181b] px-2 py-1 font-mono text-xs text-[#a1a1aa]">Local dev code: {devCode}</p>}
+      <input className={`${input} font-mono tracking-[0.3em]`} inputMode="numeric" autoComplete="one-time-code" maxLength={7} autoFocus placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} />
+      {error && <p className="text-xs text-[#f87171]">{error}</p>}
+      <button className={button} disabled={busy || code.replace(/\D/g, "").length !== 6}>{busy ? "Signing in..." : "Sign in"}</button>
+      <button type="button" className="w-full text-xs text-[#93c5fd]" onClick={() => setStep("email")}>Use a different email</button>
+    </form>
+  )
+}
+
 function Popup() {
+  const [auth, setAuthState] = useState<StoredAuth | null | undefined>(undefined)
   const [state, setState] = useState<RecordingState>({
     isRecording: false,
     session: null,
@@ -11,6 +71,10 @@ function Popup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [duration, setDuration] = useState(0)
+
+  useEffect(() => {
+    getAuth().then(setAuthState)
+  }, [])
 
   // Get current status on mount
   useEffect(() => {
@@ -47,8 +111,13 @@ function Popup() {
 
     try {
       // Open the recorder tab for screen capture
-      const recorderUrl = chrome.runtime.getURL("tabs/recorder.html")
-      await chrome.tabs.create({ url: recorderUrl })
+      // Remember which tab has the bug before the recorder tab takes focus.
+      const [bugTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      const recorderUrl = chrome.runtime.getURL(
+        `tabs/recorder.html${bugTab?.id ? `?tabId=${bugTab.id}` : ""}`
+      )
+      // Open the recorder next to the bug tab, in the background, so the user stays on the page.
+      await chrome.tabs.create({ url: recorderUrl, index: (bugTab?.index ?? 0) + 1, active: true })
 
       // Close popup - recording will happen in the new tab
       window.close()
@@ -87,6 +156,9 @@ function Popup() {
           <h1 className="text-lg font-semibold text-white">BugSnap</h1>
         </div>
       </div>
+
+      {auth === null && <SignIn onDone={setAuthState} />}
+      {auth && (<>
 
       {/* Content */}
       <div className="p-4">
@@ -192,9 +264,21 @@ function Popup() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-[#232327] bg-[#18181b]">
+      <div className="px-4 py-3 border-t border-[#232327] bg-[#18181b] space-y-2">
+        <div className="flex items-center justify-between text-xs text-[#8b8b93]">
+          <span className="truncate" title={auth.email}>{auth.email}</span>
+          <button
+            className="text-[#93c5fd] hover:text-white"
+            onClick={async () => {
+              await signOut()
+              setAuthState(null)
+            }}
+          >
+            Sign out
+          </button>
+        </div>
         <a
-          href="http://localhost:3002/dashboard"
+          href={`${DEFAULT_APP_URL}/dashboard`}
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-[#93c5fd] hover:text-white flex items-center justify-center gap-1"
@@ -210,6 +294,7 @@ function Popup() {
           </svg>
         </a>
       </div>
+      </>)}
     </div>
   )
 }

@@ -1,249 +1,219 @@
-import { Injectable } from "@nestjs/common"
+import { Injectable, Logger } from "@nestjs/common"
+import * as fs from "fs/promises"
+import * as path from "path"
 import { SettingsService } from "../settings/settings.service"
+import {
+  isBlobUrl,
+  isOwnUpload,
+  buildLogDigest,
+  buildPageBlock,
+  mimeFor,
+  resolveUploadPath,
+  summarizeLogs,
+  type CapturedLog,
+  type PageContext,
+} from "./context"
 
 export interface BugAnalysis {
   title: string
   description: string
   severity: "low" | "medium" | "high" | "critical"
   steps: string[]
+  expected?: string
+  actual?: string
   suggestions: string[]
   rootCause?: string
   affectedArea?: string
 }
 
-const SYSTEM_PROMPT = `You are an expert QA Engineer and Bug Analyst with 10+ years of experience in software testing and debugging. Your task is to analyze screenshots from a bug recording session and create a comprehensive, actionable bug report.
-
-## Your Analysis Process:
-
-1. **Visual Inspection**: Carefully examine each screenshot in sequence to understand:
-   - What application/website is being used
-   - What actions the user is performing
-   - What visual anomalies, errors, or unexpected behaviors are present
-   - Any error messages, broken UI elements, or incorrect data displayed
-
-2. **Bug Identification**: Look for:
-   - UI/UX issues (broken layouts, overlapping elements, incorrect styling)
-   - Functional bugs (buttons not working, forms not submitting, incorrect navigation)
-   - Data issues (wrong data displayed, missing content, incorrect calculations)
-   - Error states (error messages, 404 pages, loading failures, console errors visible)
-   - Performance issues (if indicated by loading states or timeouts)
-   - Accessibility issues (contrast problems, missing labels)
-
-3. **Severity Classification**:
-   - **critical**: App crashes, data loss, security vulnerabilities, complete feature failure, blocks user workflow entirely
-   - **high**: Major feature broken, significant user impact, workaround difficult or impossible
-   - **medium**: Feature partially broken, user can work around it, moderate impact on experience
-   - **low**: Minor visual issues, cosmetic problems, minimal user impact, nice-to-fix
-
-## Response Format:
-
-Respond ONLY with a valid JSON object (no markdown, no code blocks, no explanation):
-
-{
-  "title": "Clear, specific bug title under 100 characters that describes the issue",
-  "description": "Detailed description of the bug including: what is happening, where it occurs, and the impact on users. Be specific about what you observe in the screenshots.",
-  "severity": "critical|high|medium|low",
-  "steps": [
-    "Step 1: Specific action observed",
-    "Step 2: Next action in sequence",
-    "Step 3: Where the bug manifests"
-  ],
-  "suggestions": [
-    "Specific technical suggestion for fixing",
-    "Area of code/component to investigate"
-  ],
-  "rootCause": "Your best assessment of what might be causing this issue based on the visual evidence",
-  "affectedArea": "The component, page, or feature affected (e.g., 'Login Form', 'Dashboard Charts', 'Navigation Menu')"
+export interface AnalysisInput {
+  workspaceId: string
+  /** How long to keep trying busy models (ms). Default 45s. */
+  budgetMs?: number
+  /** What the reporter wrote (website widget). */
+  note?: string
+  screenshots: string[]
+  logs?: CapturedLog[]
+  page?: PageContext
+  durationSeconds?: number
 }
 
-## Important Guidelines:
+export type AnalysisResult = { analysis: BugAnalysis; model?: string } | { analysis: null; error: string }
 
-- Be SPECIFIC - reference exact UI elements, buttons, text you see
-- Infer the user journey from the screenshot sequence
-- If screenshots show a normal flow with no visible bug, still describe what you see and mark severity as "low" with title "No obvious bug detected - review recording"
-- Focus on what IS wrong, not what might theoretically go wrong
-- Your steps should be reproducible by another tester
-- Suggestions should be actionable for developers`
+const SYSTEM_PROMPT = `You are a senior QA engineer. You get evidence from one bug recording:
+screenshots in time order, a timeline of console logs, network requests, clicks and page changes, and page details.
+Write one clear bug report a developer can act on.
 
-const USER_PROMPT = `Analyze these screenshots from a bug recording session. The screenshots are in chronological order, showing the user's actions leading up to and including the bug.
+Rules:
+- Use the timeline as the main evidence. Quote exact error messages, status codes and URLs from it.
+- Use the screenshots to see what the user saw (error messages, broken UI, wrong data).
+- Steps must be concrete and reproducible, built from the clicks and page changes in the timeline.
+- Only state a root cause the evidence supports. If you are guessing, say "Likely" and why.
+- Ignore noise that has nothing to do with the bug (analytics calls, extension logs, favicon 404s).
+- Entries marked "(before recording)" happened just before the user pressed Record. They may be the cause.
+- If nothing looks broken, say so: severity "low", title starting with "No clear bug found".
 
-Examine each image carefully and identify:
-1. What the user was trying to do
-2. What went wrong (the bug)
-3. The severity and impact
-4. How to reproduce it
-5. Potential causes and fixes
+Severity: critical = crash, data loss, security issue or blocked core flow; high = main feature broken, no easy workaround;
+medium = partly broken, workaround exists; low = cosmetic or minor.
 
-Generate a detailed bug report in JSON format:`
+Reply with JSON only, matching this shape:
+{"title": string (under 90 chars), "description": string, "severity": "critical"|"high"|"medium"|"low",
+ "steps": string[], "expected": string, "actual": string, "rootCause": string, "affectedArea": string, "suggestions": string[]}`
+
+const MAX_IMAGES = 4
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
 @Injectable()
 export class AIService {
+  private readonly logger = new Logger(AIService.name)
+  private readonly uploadDir = path.join(process.cwd(), "uploads")
+
   constructor(private readonly settingsService: SettingsService) {}
 
-  async analyzeScreenshots(screenshotUrls: string[]): Promise<BugAnalysis | null> {
-    const apiKey = this.settingsService.getGeminiKey()
-    if (!apiKey) {
-      console.log("No Gemini API key configured")
-      return null
-    }
-
-    try {
-      // Build image content for Gemini Vision (limit to 10 screenshots)
-      const limitedUrls = screenshotUrls.slice(0, 10)
-
-      // Fetch images and convert to base64 for Gemini
-      const imageParts = await Promise.all(
-        limitedUrls.map(async (url) => {
-          const imageResponse = await fetch(url)
-          const arrayBuffer = await imageResponse.arrayBuffer()
-          const base64 = Buffer.from(arrayBuffer).toString("base64")
-          const mimeType = imageResponse.headers.get("content-type") || "image/png"
-          return {
-            inline_data: {
-              mime_type: mimeType,
-              data: base64,
-            },
-          }
-        })
-      )
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: `${SYSTEM_PROMPT}\n\n${USER_PROMPT}\n\n(${limitedUrls.length} screenshots provided in sequence)` },
-                  ...imageParts,
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 1500,
-            },
-          }),
-        }
-      )
-
-      if (!response.ok) {
-        const error = await response.text()
-        console.error("Gemini API error:", error)
-        return null
-      }
-
-      const data = await response.json()
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text
-
-      if (!content) {
-        return null
-      }
-
-      // Clean and parse the JSON response
-      const cleanedContent = content
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim()
-
-      const analysis = JSON.parse(cleanedContent) as BugAnalysis
-      return analysis
-    } catch (error) {
-      console.error("Failed to analyze screenshots:", error)
-      return null
-    }
+  /** Tried in order. Free-tier models are often "busy", so we fall through. */
+  get models() {
+    return (process.env.GEMINI_MODELS || "gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.5-flash,gemini-3.1-flash-lite,gemini-flash-latest")
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean)
   }
 
-  async generateBugDescription(
-    screenshots: string[],
-    consoleErrors?: string[],
-    networkErrors?: string[]
-  ): Promise<BugAnalysis | null> {
-    const apiKey = this.settingsService.getGeminiKey()
-    if (!apiKey) {
-      return null
-    }
+  async analyze(input: AnalysisInput): Promise<AnalysisResult> {
+    const pick = await this.settingsService.pickGeminiKey(input.workspaceId)
+    if (pick.key === null) return { analysis: null, error: pick.reason }
 
-    try {
-      const limitedScreenshots = screenshots.slice(0, 8)
+    const logs = input.logs ?? []
+    const images = await this.loadImages(input.screenshots ?? [], input.workspaceId)
+    if (!images.length && !logs.length) return { analysis: null, error: "Nothing to analyse: no screenshots or logs." }
 
-      // Fetch images and convert to base64 for Gemini
-      const imageParts = await Promise.all(
-        limitedScreenshots.map(async (url) => {
-          const imageResponse = await fetch(url)
-          const arrayBuffer = await imageResponse.arrayBuffer()
-          const base64 = Buffer.from(arrayBuffer).toString("base64")
-          const mimeType = imageResponse.headers.get("content-type") || "image/png"
-          return {
-            inline_data: {
-              mime_type: mimeType,
-              data: base64,
-            },
+    const counts = summarizeLogs(logs)
+    const evidence = [
+      ...(input.note ? ["## What the person reporting it wrote", `"${input.note.slice(0, 1500)}"`, ""] : []),
+      "## Page",
+      buildPageBlock(input.page),
+      input.durationSeconds ? `Recording length: ${input.durationSeconds}s` : "",
+      "",
+      `## Timeline (${counts.total} events: ${counts.errors} errors, ${counts.warnings} warnings, ${counts.failedRequests} failed requests, ${counts.clicks} clicks)`,
+      buildLogDigest(logs),
+      "",
+      `## Screenshots: ${images.length} attached in time order (first one is the start, last is the end).`,
+    ].join("\n")
+    const body = JSON.stringify({
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: [{ role: "user", parts: [{ text: evidence }, ...images] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096, responseMimeType: "application/json" },
+    })
+
+    const deadline = Date.now() + (input.budgetMs ?? 45_000)
+    let lastError = "AI analysis failed. The report was still saved."
+    // Free-tier models are busy at random. Keep cycling through the list until
+    // the deadline: a busy model is skipped, not waited on.
+    const retired = new Set<string>()
+    let i = 0
+    while (Date.now() < deadline - 4_000) {
+      const live = this.models.filter((m) => !retired.has(m))
+      if (!live.length) break
+      const model = live[i % live.length]
+      // After each full round, wait a little longer before the next (busy spikes pass).
+      if (i > 0 && i % live.length === 0) await new Promise((r) => setTimeout(r, Math.min(15_000, 1000 * 2 ** Math.floor(i / live.length))))
+      i++
+      for (let attempt = 0; attempt < 1; attempt++) {
+        const left = deadline - Date.now()
+        if (left < 4_000) return { analysis: null, error: "The AI is busy right now. Use \"Generate AI write-up\" on the report to try again." }
+        try {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-goog-api-key": pick.key },
+              body,
+              // Background jobs can afford to wait for slower models.
+              signal: AbortSignal.timeout(Math.min(left, (input.budgetMs ?? 45_000) > 60_000 ? 70_000 : 25_000)),
+            }
+          )
+          if (response.ok) {
+            const data = await response.json()
+            const content: string | undefined = data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("")
+            if (!content) {
+              lastError = "The AI returned an empty answer."
+              break
+            }
+            const analysis = normalize(JSON.parse(content.replace(/```(json)?/g, "").trim()))
+            if (pick.shared) await this.settingsService.countSharedUse(input.workspaceId)
+            return { analysis, model }
           }
-        })
-      )
-
-      let additionalContext = ""
-
-      if (consoleErrors && consoleErrors.length > 0) {
-        additionalContext += `\n\n## Console Errors Captured:\n${consoleErrors.slice(0, 10).map((e, i) => `${i + 1}. ${e}`).join("\n")}`
-      }
-
-      if (networkErrors && networkErrors.length > 0) {
-        additionalContext += `\n\n## Network Errors Captured:\n${networkErrors.slice(0, 10).map((e, i) => `${i + 1}. ${e}`).join("\n")}`
-      }
-
-      const enhancedUserPrompt = `${USER_PROMPT}${additionalContext}\n\n(${limitedScreenshots.length} screenshots provided)`
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: `${SYSTEM_PROMPT}\n\n${enhancedUserPrompt}` },
-                  ...imageParts,
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 1500,
-            },
-          }),
+          const text = await response.text()
+          this.logger.warn(`Gemini ${model} ${response.status}: ${text.slice(0, 160)}`)
+          if ((response.status === 400 || response.status === 403) && /API key|permission|PERMISSION_DENIED/i.test(text)) {
+            return { analysis: null, error: "The Gemini API key was rejected. Check it in Settings." }
+          }
+          if (response.status === 404 || /no longer available|not found/i.test(text)) {
+            retired.add(model)
+            break
+          }
+          if (response.status === 503 || response.status === 429 || response.status >= 500) {
+            lastError = "The AI is busy right now. Use \"Generate AI write-up\" on the report to try again."
+            if (/quota|billing/i.test(text)) retired.add(model)
+            continue
+          }
+          lastError = `AI request failed (${response.status}).`
+          break
+        } catch (error) {
+          this.logger.warn(`Gemini ${model} failed: ${error instanceof Error ? error.message : error}`)
+          lastError = "AI analysis failed. The report was still saved."
         }
-      )
-
-      if (!response.ok) {
-        return null
       }
-
-      const data = await response.json()
-      const content = data.candidates?.[0]?.content?.parts?.[0]?.text
-
-      if (!content) {
-        return null
-      }
-
-      // Clean and parse the JSON response
-      const cleanedContent = content
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim()
-
-      return JSON.parse(cleanedContent) as BugAnalysis
-    } catch (error) {
-      console.error("AI analysis failed:", error)
-      return null
     }
+    return { analysis: null, error: lastError }
+  }
+
+  /** Only reads our own uploaded screenshots (local disk or this workspace's Blob folder). */
+  private async loadImages(urls: string[], workspaceId: string) {
+    const picked = urls.length > MAX_IMAGES ? [urls[0], ...urls.slice(-(MAX_IMAGES - 1))] : urls
+    const parts: { inline_data: { mime_type: string; data: string } }[] = []
+    for (const url of picked) {
+      try {
+        let buffer: Buffer | null = null
+        let mime = "image/jpeg"
+        if (isBlobUrl(url) && isOwnUpload(url, "thumbnails", workspaceId)) {
+          const res = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+          if (!res.ok) continue
+          buffer = Buffer.from(await res.arrayBuffer())
+          mime = res.headers.get("content-type")?.split(";")[0] || mimeFor(url)
+        } else {
+          const file = resolveUploadPath(url, this.uploadDir)
+          if (!file) {
+            this.logger.warn(`Skipped screenshot that is not an uploaded file: ${url.slice(0, 120)}`)
+            continue
+          }
+          buffer = await fs.readFile(file)
+          mime = mimeFor(file)
+        }
+        if (!buffer || buffer.length > MAX_IMAGE_BYTES) continue
+        parts.push({ inline_data: { mime_type: mime, data: buffer.toString("base64") } })
+      } catch {
+        // missing or unreadable
+      }
+    }
+    return parts
+  }
+}
+
+const SEVERITIES = ["low", "medium", "high", "critical"] as const
+
+function normalize(raw: Record<string, unknown>): BugAnalysis {
+  const list = (v: unknown) => (Array.isArray(v) ? v.map(String).filter(Boolean).slice(0, 15) : [])
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined)
+  const severity = String(raw.severity ?? "medium").toLowerCase()
+  return {
+    title: (text(raw.title) ?? "Bug report").slice(0, 120),
+    description: text(raw.description) ?? "",
+    severity: (SEVERITIES as readonly string[]).includes(severity) ? (severity as BugAnalysis["severity"]) : "medium",
+    steps: list(raw.steps),
+    expected: text(raw.expected),
+    actual: text(raw.actual),
+    suggestions: list(raw.suggestions),
+    rootCause: text(raw.rootCause),
+    affectedArea: text(raw.affectedArea),
   }
 }

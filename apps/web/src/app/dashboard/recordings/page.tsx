@@ -1,5 +1,6 @@
 "use client"
 
+import { useCrumbs } from "@/components/shell/workspace-data"
 import { useState, useEffect } from "react"
 import { Play, Clock, HardDrive, Video, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ function formatDate(dateString: string): string {
 }
 
 export default function RecordingsPage() {
+  useCrumbs([{ label: "Recordings" }])
   const [recordings, setRecordings] = useState<Recording[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -86,7 +88,7 @@ export default function RecordingsPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {recordings.map((recording) => (
             <Card
-              key={recording.filename}
+              key={recording.url}
               className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => setSelectedVideo(recording)}
             >
@@ -102,12 +104,12 @@ export default function RecordingsPage() {
               <CardContent className="p-4">
                 <div>
                   <h3 className="font-medium mb-2 text-foreground truncate">
-                    {recording.filename}
+                    {recording.reportTitle || recording.filename}
                   </h3>
                   <div className="flex items-center gap-3 text-xs text-foreground-muted">
                     <span className="flex items-center gap-1">
                       <HardDrive className="h-3 w-3" />
-                      {formatFileSize(recording.size)}
+                      {recording.size ? formatFileSize(recording.size) : null}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -133,7 +135,7 @@ export default function RecordingsPage() {
           >
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-medium text-foreground truncate">
-                {selectedVideo.filename}
+                {selectedVideo.reportTitle || selectedVideo.filename}
               </h3>
               <Button
                 variant="ghost"
@@ -151,7 +153,9 @@ export default function RecordingsPage() {
                 className="w-full rounded-lg"
               />
               <div className="mt-4 flex items-center gap-4 text-sm text-foreground-secondary">
-                <span>{formatFileSize(selectedVideo.size)}</span>
+                {selectedVideo.reportId && (
+                  <a href={`/dashboard/reports/${selectedVideo.reportId}`} className="text-primary hover:underline">Open report</a>
+                )}
                 <span>{formatDate(selectedVideo.createdAt)}</span>
               </div>
             </div>
