@@ -267,7 +267,7 @@ export default function BugReportDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* AI Generated Summary */}
           {report.aiSummary && (
-            <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20 rounded-lg p-4">
+            <div className="bg-primary-muted/60 border border-primary/25 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-primary">AI Generated Summary</span>
@@ -343,19 +343,19 @@ export default function BugReportDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-gray-900 rounded-lg p-4 max-h-80 overflow-auto font-mono text-sm">
+                <div className="bg-background border border-border rounded-lg p-4 max-h-80 overflow-auto font-mono text-sm">
                   {logs.map((log, index) => (
                     <div
                       key={index}
                       className={`py-1 ${
                         log.level === "error"
-                          ? "text-red-400"
+                          ? "text-destructive"
                           : log.level === "warn"
-                          ? "text-yellow-400"
-                          : "text-gray-300"
+                          ? "text-warning"
+                          : "text-foreground-secondary"
                       }`}
                     >
-                      <span className="text-gray-500">[{log.type}]</span> {log.message}
+                      <span className="text-foreground-muted">[{log.type}]</span> {log.message}
                     </div>
                   ))}
                 </div>

@@ -7,22 +7,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: radial-gradient(900px 500px at 50% -10%, rgba(59,130,246,.22), transparent 70%), #0a0a0b;
   padding: 20px;
 }
 
 .recorder-container {
-  background: white;
+  background: #111113;
+  border: 1px solid #232327;
   border-radius: 16px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   width: 100%;
   max-width: 600px;
   overflow: hidden;
 }
 
 .recorder-header {
-  background: #4f46e5;
-  color: white;
+  background: #141416;
+  border-bottom: 1px solid #232327;
+  color: #ededef;
   padding: 24px;
   display: flex;
   align-items: center;
@@ -53,21 +55,21 @@
 }
 
 .status-message p {
-  color: #374151;
+  color: #ededef;
   font-size: 16px;
   margin: 0;
 }
 
 .hint {
-  color: #6b7280 !important;
+  color: #8b8b93 !important;
   font-size: 14px !important;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #4f46e5;
+  border: 3px solid #232327;
+  border-top-color: #3b82f6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -89,8 +91,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fef2f2;
-  color: #dc2626;
+  background: rgba(248,113,113,.10);
+  color: #f87171;
   padding: 8px 16px;
   border-radius: 9999px;
   font-weight: 500;
@@ -99,7 +101,7 @@
 .pulse-dot {
   width: 12px;
   height: 12px;
-  background: #dc2626;
+  background: #f87171;
   border-radius: 50%;
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -119,14 +121,14 @@
   font-size: 48px;
   font-weight: 700;
   font-family: ui-monospace, monospace;
-  color: #1f2937;
+  color: #ededef;
 }
 
 .stop-button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #dc2626;
+  background: #f87171;
   color: white;
   border: none;
   padding: 16px 32px;
@@ -138,7 +140,7 @@
 }
 
 .stop-button:hover {
-  background: #b91c1c;
+  background: #ef4444;
 }
 
 .stop-button svg {
@@ -156,31 +158,31 @@
 .check-icon {
   width: 64px;
   height: 64px;
-  color: #10b981;
+  color: #4ade80;
 }
 
 .done-status h2 {
   font-size: 24px;
   font-weight: 600;
-  color: #1f2937;
+  color: #ededef;
   margin: 0;
 }
 
 .stats {
-  background: #f3f4f6;
+  background: #18181b;
   padding: 16px 24px;
   border-radius: 12px;
   text-align: left;
 }
 
 .stats p {
-  color: #4b5563;
+  color: #8b8b93;
   margin: 4px 0;
   font-size: 14px;
 }
 
 .close-button {
-  background: #4f46e5;
+  background: #3b82f6;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -192,7 +194,7 @@
 }
 
 .close-button:hover {
-  background: #4338ca;
+  background: #2563eb;
 }
 
 .error-status {
@@ -205,23 +207,23 @@
 .error-icon {
   width: 64px;
   height: 64px;
-  color: #dc2626;
+  color: #f87171;
   stroke-width: 2;
 }
 
 .error-status h2 {
   font-size: 24px;
   font-weight: 600;
-  color: #1f2937;
+  color: #ededef;
   margin: 0;
 }
 
 .error-status p {
-  color: #6b7280;
+  color: #8b8b93;
 }
 
 .retry-button {
-  background: #4f46e5;
+  background: #3b82f6;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -233,11 +235,11 @@
 }
 
 .retry-button:hover {
-  background: #4338ca;
+  background: #2563eb;
 }
 
 .progress {
-  color: #6b7280 !important;
+  color: #8b8b93 !important;
   font-size: 14px !important;
 }
 
@@ -251,7 +253,7 @@
 .ai-analysis h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #4f46e5;
+  color: #3b82f6;
   margin: 0 0 12px 0;
   display: flex;
   align-items: center;
@@ -266,8 +268,8 @@
 }
 
 .analysis-content {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #141416;
+  border: 1px solid #232327;
   border-radius: 12px;
   padding: 16px;
 }
@@ -281,7 +283,7 @@
 
 .analysis-header strong {
   font-size: 15px;
-  color: #1f2937;
+  color: #ededef;
   line-height: 1.4;
 }
 
@@ -296,27 +298,27 @@
 }
 
 .severity-low {
-  background: #dcfce7;
-  color: #166534;
+  background: rgba(74,222,128,.10);
+  color: #4ade80;
 }
 
 .severity-medium {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(251,191,36,.10);
+  color: #fbbf24;
 }
 
 .severity-high {
-  background: #fee2e2;
-  color: #dc2626;
+  background: rgba(248,113,113,.16);
+  color: #f87171;
 }
 
 .severity-critical {
-  background: #dc2626;
+  background: #f87171;
   color: white;
 }
 
 .analysis-description {
-  color: #4b5563;
+  color: #8b8b93;
   font-size: 14px;
   line-height: 1.5;
   margin: 0 0 12px 0;
@@ -330,7 +332,7 @@
 .analysis-steps strong,
 .analysis-suggestions strong {
   font-size: 13px;
-  color: #374151;
+  color: #ededef;
   display: block;
   margin-bottom: 6px;
 }
@@ -343,13 +345,13 @@
 
 .analysis-steps li,
 .analysis-suggestions li {
-  color: #4b5563;
+  color: #8b8b93;
   font-size: 13px;
   line-height: 1.6;
 }
 
 .no-analysis {
-  color: #9ca3af;
+  color: #5c5c64;
   font-size: 13px;
   margin-top: 8px;
 }
@@ -357,7 +359,7 @@
 .affected-area {
   display: block;
   font-size: 12px;
-  color: #6b7280;
+  color: #8b8b93;
   font-weight: normal;
   margin-top: 2px;
 }
@@ -365,21 +367,25 @@
 .analysis-root-cause {
   margin-top: 12px;
   padding: 10px;
-  background: #fef3c7;
+  background: rgba(251,191,36,.10);
   border-radius: 8px;
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid #fbbf24;
 }
 
 .analysis-root-cause strong {
   font-size: 13px;
-  color: #92400e;
+  color: #fbbf24;
   display: block;
   margin-bottom: 4px;
 }
 
 .analysis-root-cause p {
-  color: #78350f;
+  color: #fcd34d;
   font-size: 13px;
   margin: 0;
   line-height: 1.5;
 }
+
+/* BugSnap logo in the recorder header */
+.recorder-icon { border-radius: 8px; box-shadow: 0 0 18px -4px rgba(59,130,246,.7); }
+body { background: #0a0a0b; font-family: "Geist", system-ui, -apple-system, sans-serif; }

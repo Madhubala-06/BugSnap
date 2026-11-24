@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import { startScreenRecording, stopScreenRecording, type RecordingResult } from "../lib/recorder"
 import "../styles/recorder.css"
+import logoUrl from "data-base64:~assets/icon.png"
 
 type Status = "idle" | "requesting" | "recording" | "stopping" | "uploading" | "analyzing" | "done" | "error"
 
@@ -204,9 +205,7 @@ function RecorderPage() {
     <div className="recorder-page">
       <div className="recorder-container">
         <div className="recorder-header">
-          <svg className="recorder-icon" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="12" r="8" />
-          </svg>
+          <img className="recorder-icon" src={logoUrl} alt="" />
           <h1>BugSnap</h1>
         </div>
 

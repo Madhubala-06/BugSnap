@@ -17,7 +17,7 @@ function Avatar({ src, fallback, className, ...props }: AvatarProps) {
       {src ? (
         <img src={src} alt={fallback} className="aspect-square h-full w-full" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gray-200 text-sm font-medium text-gray-600">
+        <div className="flex h-full w-full items-center justify-center bg-primary-muted text-sm font-medium text-primary">
           {fallback}
         </div>
       )}

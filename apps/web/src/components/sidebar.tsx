@@ -25,8 +25,11 @@ export function Sidebar() {
   return (
     <div className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-6">
-        <Bug className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold text-sidebar-foreground">BugSnap</span>
+        <Link href="/" className="flex items-center gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" width={28} height={28} className="rounded-[7px] shadow-[0_0_18px_-4px_rgba(59,130,246,.7)]" />
+          <span className="text-lg font-semibold tracking-tight text-sidebar-foreground">BugSnap</span>
+        </Link>
       </div>
 
       <div className="p-4">
@@ -72,11 +75,11 @@ export function Sidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-muted text-sm font-medium text-primary">
-              JD
+              L
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-sidebar-foreground">John Doe</p>
-              <p className="text-xs text-foreground-muted">john@example.com</p>
+              <p className="text-sm font-medium text-sidebar-foreground">Local workspace</p>
+              <p className="text-xs text-foreground-muted">Not signed in yet</p>
             </div>
           </div>
           <ThemeToggle />

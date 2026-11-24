@@ -296,7 +296,7 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
   return (
     <div className="fixed inset-0 bg-black z-[100] flex flex-col">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-900 text-white">
+      <div className="flex items-center justify-between px-4 py-3 bg-background-secondary text-foreground border-b border-border">
         <div className="flex items-center gap-1">
           <ToolButton toolName="select" icon={MousePointer2} title="Select" />
           <ToolButton toolName="draw" icon={Pencil} title="Draw" />
@@ -306,7 +306,7 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
           <ToolButton toolName="text" icon={Type} title="Text" />
           <ToolButton toolName="redact" icon={Eraser} title="Redact" />
 
-          <div className="w-px h-6 bg-gray-600 mx-2" />
+          <div className="w-px h-6 bg-border mx-2" />
 
           {/* Colors */}
           <div className="flex items-center gap-1">
@@ -323,7 +323,7 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
             ))}
           </div>
 
-          <div className="w-px h-6 bg-gray-600 mx-2" />
+          <div className="w-px h-6 bg-border mx-2" />
 
           <button onClick={handleUndo} title="Undo" className="p-2 rounded-lg hover:bg-white/20">
             <RotateCcw className="h-5 w-5" />
@@ -332,11 +332,11 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
             <X className="h-5 w-5" />
           </button>
 
-          <div className="w-px h-6 bg-gray-600 mx-2" />
+          <div className="w-px h-6 bg-border mx-2" />
 
           {(tool === "draw" || tool === "redact") && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">Size:</span>
+              <span className="text-xs text-foreground-muted">Size:</span>
               <input
                 type="range"
                 min="1"
@@ -349,7 +349,7 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
             </div>
           )}
 
-          <div className="w-px h-6 bg-gray-600 mx-2" />
+          <div className="w-px h-6 bg-border mx-2" />
 
           <button onClick={handleZoomOut} title="Zoom Out" className="p-2 rounded-lg hover:bg-white/20">
             <ZoomOut className="h-5 w-5" />
@@ -361,7 +361,7 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleDownload} className="text-white border-gray-600">
+          <Button variant="outline" size="sm" onClick={handleDownload} className="border-border">
             <Download className="h-4 w-4 mr-2" />
             Download
           </Button>

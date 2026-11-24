@@ -80,7 +80,7 @@ export function RichTextEditor({
           "prose-ul:text-foreground-secondary prose-ol:text-foreground-secondary",
           "prose-blockquote:border-l-primary prose-blockquote:text-foreground-secondary",
           "prose-code:text-primary prose-code:bg-primary-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded",
-          "prose-pre:bg-gray-900 prose-pre:text-gray-100"
+          "prose-pre:bg-background prose-pre:text-foreground"
         ),
       },
     },

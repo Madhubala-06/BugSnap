@@ -157,7 +157,7 @@ export default function ReportsPage() {
                     </div>
                     <h3 className="text-lg font-semibold mb-2 text-foreground">{bug.title}</h3>
                     {bug.description && (
-                      <p className="text-foreground-secondary mb-4 line-clamp-2">{bug.description}</p>
+                      <p className="text-foreground-secondary mb-4 line-clamp-2">{bug.description.replace(/<[^>]+>/g, "")}</p>
                     )}
 
                     {bug.aiSummary && (

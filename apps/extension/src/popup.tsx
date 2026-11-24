@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import type { RecordingState } from "./lib/types"
 import "../style.css"
+import logoUrl from "data-base64:~assets/icon.png"
 
 function Popup() {
   const [state, setState] = useState<RecordingState>({
@@ -78,13 +79,11 @@ function Popup() {
   const logsCount = state.session?.logs?.length || 0
 
   return (
-    <div className="w-80 bg-white">
+    <div className="w-80 bg-[#111113] text-[#ededef]">
       {/* Header */}
-      <div className="bg-indigo-600 px-4 py-3">
+      <div className="bg-[#141416] border-b border-[#232327] px-4 py-3">
         <div className="flex items-center gap-2">
-          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
+          <img src={logoUrl} alt="" className="w-7 h-7 rounded-md shadow-[0_0_14px_-3px_rgba(59,130,246,.8)]" />
           <h1 className="text-lg font-semibold text-white">BugSnap</h1>
         </div>
       </div>
@@ -92,13 +91,13 @@ function Popup() {
       {/* Content */}
       <div className="p-4">
         {/* Status */}
-        <div className="mb-4 p-3 rounded-lg bg-gray-50">
+        <div className="mb-4 p-3 rounded-lg bg-[#18181b]">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Status</span>
+            <span className="text-sm text-[#8b8b93]">Status</span>
             <div className="flex items-center gap-2">
               <span
                 className={`w-2 h-2 rounded-full ${
-                  state.isRecording ? "bg-red-500 animate-pulse" : "bg-gray-400"
+                  state.isRecording ? "bg-[#f87171]/100 animate-pulse" : "bg-[#5c5c64]"
                 }`}
               />
               <span className="text-sm font-medium">
@@ -110,13 +109,13 @@ function Popup() {
           {state.isRecording && (
             <>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-gray-600">Duration</span>
-                <span className="text-sm font-mono font-medium text-indigo-600">
+                <span className="text-sm text-[#8b8b93]">Duration</span>
+                <span className="text-sm font-mono font-medium text-[#93c5fd]">
                   {formatDuration(duration)}
                 </span>
               </div>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-gray-600">Events Captured</span>
+                <span className="text-sm text-[#8b8b93]">Events Captured</span>
                 <span className="text-sm font-medium">{logsCount}</span>
               </div>
             </>
@@ -125,8 +124,8 @@ function Popup() {
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200">
-            <p className="text-sm text-red-600">{error}</p>
+          <div className="mb-4 p-3 rounded-lg bg-[#f87171]/10 border border-[#f87171]/30">
+            <p className="text-sm text-[#f87171]">{error}</p>
           </div>
         )}
 
@@ -136,8 +135,8 @@ function Popup() {
           disabled={loading}
           className={`w-full py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
             state.isRecording
-              ? "bg-red-500 hover:bg-red-600 text-white"
-              : "bg-indigo-600 hover:bg-indigo-700 text-white"
+              ? "bg-[#f87171]/100 hover:bg-[#dc2626] text-white"
+              : "bg-[#3b82f6] hover:bg-[#2563eb] text-white"
           } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
         >
           {loading ? (
@@ -176,16 +175,16 @@ function Popup() {
 
         {/* Session info after stopping */}
         {!state.isRecording && state.session && state.session.logs.length > 0 && (
-          <div className="mt-4 p-3 rounded-lg bg-green-50 border border-green-200">
-            <p className="text-sm text-green-700 font-medium">Recording Complete!</p>
-            <p className="text-xs text-green-600 mt-1">
+          <div className="mt-4 p-3 rounded-lg bg-[#4ade80]/10 border border-[#4ade80]/30">
+            <p className="text-sm text-[#4ade80] font-medium">Recording Complete!</p>
+            <p className="text-xs text-[#86efac] mt-1">
               Captured {state.session.logs.length} events
             </p>
           </div>
         )}
 
         {/* Help text */}
-        <p className="mt-4 text-xs text-gray-500 text-center">
+        <p className="mt-4 text-xs text-[#5c5c64] text-center">
           {state.isRecording
             ? "Recording in progress in another tab"
             : "Opens screen recorder to capture video"}
@@ -193,12 +192,12 @@ function Popup() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t bg-gray-50">
+      <div className="px-4 py-3 border-t border-[#232327] bg-[#18181b]">
         <a
           href="http://localhost:3002/dashboard"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center justify-center gap-1"
+          className="text-xs text-[#93c5fd] hover:text-white flex items-center justify-center gap-1"
         >
           Open Dashboard
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

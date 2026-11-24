@@ -90,8 +90,9 @@ export default function RecordingsPage() {
               className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => setSelectedVideo(recording)}
             >
-              <div className="relative aspect-video bg-background-tertiary flex items-center justify-center">
-                <Video className="h-12 w-12 text-foreground-muted" />
+              <div className="relative aspect-video bg-background-tertiary flex items-center justify-center overflow-hidden">
+                <video src={`${recording.url}#t=0.5`} preload="metadata" muted playsInline className="absolute inset-0 h-full w-full object-cover" />
+                <Video className="relative h-8 w-8 text-foreground/70 drop-shadow" />
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-foreground/20">
                   <Button size="icon" className="rounded-full h-14 w-14">
                     <Play className="h-6 w-6" />

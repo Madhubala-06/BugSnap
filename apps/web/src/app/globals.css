@@ -19,10 +19,10 @@
     --card-foreground: 222 47% 11%;
 
     /* Primary - Indigo */
-    --primary: 239 84% 67%;
-    --primary-hover: 239 84% 60%;
+    --primary: 221 83% 53%;
+    --primary-hover: 221 83% 46%;
     --primary-foreground: 0 0% 100%;
-    --primary-muted: 239 84% 97%;
+    --primary-muted: 214 100% 97%;
 
     /* Accent - Amber */
     --accent: 38 92% 50%;
@@ -49,13 +49,13 @@
     --border: 220 13% 91%;
     --border-hover: 220 13% 80%;
     --input: 220 13% 91%;
-    --ring: 239 84% 67%;
+    --ring: 221 83% 53%;
 
     /* Sidebar */
     --sidebar: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-active: 239 84% 97%;
+    --sidebar-active: 214 100% 97%;
 
     /* Severity colors */
     --severity-critical: 350 89% 60%;
@@ -72,68 +72,58 @@
   }
 
   .dark {
-    /* Background colors */
-    --background: 224 71% 4%;
-    --background-secondary: 222 47% 8%;
-    --background-tertiary: 222 47% 12%;
+    /* BugSnap dark palette: neutral black with one blue accent */
+    --background: 240 5% 4%;            /* #0A0A0B */
+    --background-secondary: 240 6% 7%;  /* #111113 */
+    --background-tertiary: 240 5% 10%;  /* #18181B */
 
-    /* Foreground/Text colors */
-    --foreground: 210 40% 98%;
-    --foreground-secondary: 215 20% 65%;
-    --foreground-muted: 215 16% 47%;
+    --foreground: 240 7% 93%;           /* #EDEDEF */
+    --foreground-secondary: 240 4% 56%; /* #8B8B93 */
+    --foreground-muted: 240 4% 38%;     /* #5C5C64 */
 
-    /* Card */
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 5% 8%;                  /* #141416 */
+    --card-foreground: 240 7% 93%;
 
-    /* Primary - Indigo (lighter for dark mode) */
-    --primary: 239 84% 67%;
-    --primary-hover: 239 84% 74%;
+    --primary: 217 91% 60%;             /* #3B82F6 */
+    --primary-hover: 213 94% 68%;       /* #60A5FA */
     --primary-foreground: 0 0% 100%;
-    --primary-muted: 239 50% 15%;
+    --primary-muted: 217 55% 13%;
 
-    /* Accent - Amber */
-    --accent: 38 92% 50%;
-    --accent-hover: 38 92% 58%;
-    --accent-foreground: 0 0% 0%;
-    --accent-muted: 38 50% 15%;
+    --accent: 213 97% 78%;              /* #93C5FD */
+    --accent-hover: 213 97% 85%;
+    --accent-foreground: 240 5% 4%;
+    --accent-muted: 217 45% 14%;
 
-    /* Success - Emerald */
-    --success: 160 84% 45%;
-    --success-foreground: 0 0% 100%;
-    --success-muted: 160 50% 15%;
+    --success: 142 69% 58%;             /* #4ADE80 */
+    --success-foreground: 240 5% 4%;
+    --success-muted: 142 45% 11%;
 
-    /* Destructive - Rose */
-    --destructive: 350 89% 60%;
+    --destructive: 0 91% 71%;           /* #F87171 */
     --destructive-foreground: 0 0% 100%;
-    --destructive-muted: 350 50% 15%;
+    --destructive-muted: 0 45% 13%;
 
-    /* Warning - Orange */
-    --warning: 25 95% 53%;
-    --warning-foreground: 0 0% 0%;
-    --warning-muted: 25 50% 15%;
+    --warning: 43 96% 56%;              /* #FBBF24 */
+    --warning-foreground: 240 5% 4%;
+    --warning-muted: 43 45% 12%;
 
-    /* Border & Input */
-    --border: 222 30% 18%;
-    --border-hover: 222 30% 28%;
-    --input: 222 30% 18%;
-    --ring: 239 84% 67%;
+    --border: 240 5% 15%;               /* #232327 */
+    --border-hover: 240 5% 19%;         /* #2E2E33 */
+    --input: 240 5% 15%;
+    --ring: 217 91% 60%;
 
-    /* Sidebar */
-    --sidebar: 222 47% 6%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-border: 222 30% 18%;
-    --sidebar-active: 239 50% 15%;
+    --sidebar: 240 6% 5.5%;
+    --sidebar-foreground: 240 7% 93%;
+    --sidebar-border: 240 5% 15%;
+    --sidebar-active: 217 50% 12%;
 
-    /* Severity colors - adjusted for dark mode */
-    --severity-critical: 350 89% 60%;
-    --severity-critical-bg: 350 50% 15%;
-    --severity-high: 25 95% 53%;
-    --severity-high-bg: 25 50% 15%;
-    --severity-medium: 45 93% 47%;
-    --severity-medium-bg: 45 50% 15%;
-    --severity-low: 160 84% 45%;
-    --severity-low-bg: 160 50% 15%;
+    --severity-critical: 0 91% 71%;
+    --severity-critical-bg: 0 45% 13%;
+    --severity-high: 25 95% 62%;
+    --severity-high-bg: 25 45% 13%;
+    --severity-medium: 43 96% 56%;
+    --severity-medium-bg: 43 45% 12%;
+    --severity-low: 142 69% 58%;
+    --severity-low-bg: 142 45% 11%;
   }
 
   * {

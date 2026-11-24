@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [showKey, setShowKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [savedHint, setSavedHint] = useState("")
 
   useEffect(() => {
     // Load existing API key
@@ -20,7 +21,7 @@ export default function SettingsPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.key) {
-          setGeminiKey(data.key)
+          setSavedHint(data.key)
         }
       })
       .catch(console.error)
@@ -70,7 +71,7 @@ export default function SettingsPage() {
                     type={showKey ? "text" : "password"}
                     value={geminiKey}
                     onChange={(e) => setGeminiKey(e.target.value)}
-                    placeholder="AIza..."
+                    placeholder={savedHint ? `Saved: ${savedHint} (type a new key to replace it)` : "AIza..."}
                     className="pr-10"
                   />
                   <button
@@ -115,16 +116,16 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground">First Name</label>
-                <Input defaultValue="John" className="mt-1" />
+                <Input placeholder="Your first name" className="mt-1" />
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">Last Name</label>
-                <Input defaultValue="Doe" className="mt-1" />
+                <Input placeholder="Your last name" className="mt-1" />
               </div>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Email</label>
-              <Input defaultValue="john@example.com" type="email" className="mt-1" />
+              <Input placeholder="you@company.com" type="email" className="mt-1" />
             </div>
             <Button>Save Changes</Button>
           </CardContent>
@@ -138,15 +139,15 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium text-foreground">Workspace Name</label>
-              <Input defaultValue="Acme Inc" className="mt-1" />
+              <Input placeholder="Your team or company" className="mt-1" />
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Workspace URL</label>
               <div className="mt-1 flex">
                 <span className="inline-flex items-center rounded-l-md border border-r-0 border-border bg-background-secondary px-3 text-sm text-foreground-secondary">
-                  bugrecorder.com/
+                  bugsnap.app/
                 </span>
-                <Input defaultValue="acme" className="rounded-l-none" />
+                <Input placeholder="your-team" className="rounded-l-none" />
               </div>
             </div>
             <Button>Update Workspace</Button>
