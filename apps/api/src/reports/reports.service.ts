@@ -6,6 +6,7 @@ import { randomToken } from "../auth/crypto"
 import { cleanLabels, hostOf, logActivity, PRIORITIES } from "../triage/activity"
 import { Mailer } from "../auth/mailer"
 import { notifyAssigned } from "../teams/notify"
+import { IntegrationsService } from "../integrations/integrations.service"
 import { del } from "@vercel/blob"
 import { waitUntil } from "@vercel/functions"
 import { errorSignature, fallbackSummary, fallbackTitle, isBlobUrl, isOwnUpload, summarizeLogs, type CapturedLog, type PageContext } from "../ai/context"
@@ -73,7 +74,8 @@ export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ai: AIService,
-    private readonly mailer: Mailer
+    private readonly mailer: Mailer,
+    private readonly integrations: IntegrationsService
   ) {}
 
   async createQuick(
@@ -152,7 +154,18 @@ export class ReportsService {
       ...(auth.reporter?.email ? { email: auth.reporter.email } : {}),
     })
     if (data.analyze) this.runAiInBackground(auth.workspaceId, report.id)
+    else this.integrations.notifySlack(auth.workspaceId, "created", report.id, auth.source === "widget" ? `Reported from the website${auth.reporter?.email ? ` by ${auth.reporter.email}` : ""}` : undefined)
     return { ...report, analysis, aiError }
+  }
+
+  /** Slack "new bug" goes out after the first AI attempt (so it has a good title), only once. */
+  private async announceOnce(workspaceId: string, id: string) {
+    const attempts = await this.prisma.activity.count({ where: { reportId: id, kind: { in: ["ai_done", "ai_failed"] } } })
+    if (attempts === 1) {
+      const r = await this.prisma.bugReport.findUnique({ where: { id }, select: { browserInfo: true } })
+      const info = (r?.browserInfo ?? {}) as { source?: string; reporter?: { email?: string } }
+      this.integrations.notifySlack(workspaceId, "created", id, info.source === "widget" ? `Reported from the website${info.reporter?.email ? ` by ${info.reporter.email}` : ""}` : undefined)
+    }
   }
 
   /** Next BUG-<n> for a workspace. The unique index catches races; we retry once. */
@@ -252,6 +265,7 @@ export class ReportsService {
         data: { aiStatus: "failed", browserInfo: { ...(info as object), aiError: result.error } as Prisma.InputJsonValue },
       })
       await logActivity(this.prisma, id, null, "ai_failed", { error: result.error })
+      await this.announceOnce(workspaceId, id)
       return { ok: false, error: result.error }
     }
     const a = result.analysis
@@ -275,6 +289,7 @@ export class ReportsService {
       },
     })
     await logActivity(this.prisma, id, null, "ai_done", { severity: a.severity, model: result.model })
+    await this.announceOnce(workspaceId, id)
     return { ok: true }
   }
 
@@ -320,6 +335,7 @@ export class ReportsService {
         reporter: { select: { id: true, name: true, email: true } },
         assignee: { select: { id: true, name: true, email: true } },
         project: { select: { id: true, name: true, color: true } },
+        links: { orderBy: { createdAt: "asc" } },
       },
     })
     if (!report) throw new NotFoundException("Report not found")
@@ -370,10 +386,18 @@ export class ReportsService {
 
     // Activity for the changes people care about.
     const actor = actorId ?? null
-    if (allowed.status !== undefined && allowed.status !== before.status) await logActivity(this.prisma, id, actor, "status", { from: before.status, to: allowed.status })
+    if (allowed.status !== undefined && allowed.status !== before.status) {
+      await logActivity(this.prisma, id, actor, "status", { from: before.status, to: allowed.status })
+      await this.integrations.onStatusChange(workspaceId, id, before.status, allowed.status as ReportStatus)
+      if (["RESOLVED", "CLOSED"].includes(String(allowed.status))) this.integrations.notifySlack(workspaceId, "resolved", id)
+    }
     if (allowed.assigneeId !== undefined && allowed.assigneeId !== before.assigneeId) {
       await logActivity(this.prisma, id, actor, "assignee", { to: allowed.assigneeId })
       if (allowed.assigneeId && actor) notifyAssigned(this.prisma, this.mailer, id, String(allowed.assigneeId), actor)
+      if (allowed.assigneeId) {
+        const who = await this.prisma.user.findUnique({ where: { id: String(allowed.assigneeId) }, select: { name: true } })
+        this.integrations.notifySlack(workspaceId, "assigned", id, who ? `Assigned to *${who.name}*` : undefined)
+      }
     }
     if (allowed.priority !== undefined && allowed.priority !== before.priority) await logActivity(this.prisma, id, actor, "priority", { from: before.priority, to: allowed.priority })
     if (allowed.labels !== undefined && JSON.stringify(allowed.labels) !== JSON.stringify(before.labels)) await logActivity(this.prisma, id, actor, "labels", { to: allowed.labels })

@@ -32,6 +32,12 @@ function describe(item: ActivityItem, memberName: (id?: unknown) => string): str
       return "renamed it"
     case "shared":
       return "created a share link"
+    case "issue_created":
+      return `created ${String(d.key ?? "an issue")} in ${d.provider === "github" ? "GitHub" : d.provider === "linear" ? "Linear" : "Jira"}`
+    case "sync_failed":
+      return `could not update ${String(d.key ?? "the linked issue")} in ${d.provider === "github" ? "GitHub" : d.provider === "linear" ? "Linear" : "Jira"}: ${String(d.error ?? "")}`
+    case "synced":
+      return `${String(d.label ?? "the linked issue changed")}, so the bug is now ${STATUS_LABEL[String(d.to)]?.toLowerCase() ?? String(d.to)}`
     case "unshared":
       return "stopped sharing"
     default:
@@ -98,7 +104,12 @@ export function ActivityFeed({ reportId, refreshKey }: { reportId: string; refre
                 )}
                 <span className="pt-0.5">
                   <b className="font-medium text-foreground">
-                    {item.actor?.name ?? (item.kind === "created" ? String((item.data as Record<string, unknown> | null)?.email ?? "A website visitor") : "BugSnap AI")}
+                    {item.actor?.name ??
+                      (item.kind === "created"
+                        ? String((item.data as Record<string, unknown> | null)?.email ?? "A website visitor")
+                        : item.kind === "synced" || item.kind === "sync_failed"
+                          ? "Sync"
+                          : "BugSnap AI")}
                   </b>{" "}
                   {describe(item, memberName)}
                   <span className="text-foreground-muted"> · {timeAgo(item.createdAt)}</span>

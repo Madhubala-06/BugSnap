@@ -154,3 +154,31 @@ export function toAgentText(report: ReportLike): string {
     .filter(Boolean)
     .join("\n")
 }
+
+/** Issue body for GitHub / Linear (Markdown) and Jira (plain lines). */
+export function toIssueMarkdown(report: ReportLike & { number?: number | null }, appUrl: string): string {
+  const { logs = [], page, recordingUrl, screenshotUrls = [] } = info(report)
+  const errors = logs.filter((l) => l.level === "ERROR").slice(0, 8)
+  const parts: string[] = []
+  const description = strip(report.description)
+  if (description) parts.push(description, "")
+  if (report.stepsToReproduce?.length) parts.push("**Steps to reproduce**", ...report.stepsToReproduce.map((s, i) => `${i + 1}. ${s.replace(/^Step \d+:\s*/i, "")}`), "")
+  if (report.expectedResult) parts.push(`**Expected:** ${report.expectedResult}`)
+  if (report.actualResult) parts.push(`**Actual:** ${report.actualResult}`)
+  if (report.expectedResult || report.actualResult) parts.push("")
+  if (report.aiRootCause) parts.push(`**Likely cause:** ${report.aiRootCause}`, "")
+  if (errors.length) {
+    parts.push("**Errors captured**", "```")
+    for (const e of errors) {
+      parts.push(e.message.slice(0, 400))
+      if (typeof e.data?.stack === "string") parts.push(String(e.data.stack).split("\n").slice(0, 4).join("\n"))
+    }
+    parts.push("```", "")
+  }
+  const env = [page?.url && `Page: ${page.url}`, page?.userAgent && `Browser: ${(page.userAgent.match(/Chrome\/\d+/) ?? [page.userAgent.slice(0, 60)])[0]}`, page?.viewport?.width && `Viewport: ${page.viewport.width}×${page.viewport.height}`].filter(Boolean)
+  if (env.length) parts.push(env.join(" · "), "")
+  const media = [recordingUrl && `[Video](${recordingUrl})`, ...screenshotUrls.slice(0, 4).map((u, i) => `[Screenshot ${i + 1}](${u})`)].filter(Boolean)
+  if (media.length) parts.push(media.join(" · "), "")
+  parts.push(`---`, `Recorded with BugSnap · [BUG-${report.number ?? ""} full report, timeline and regression test](${appUrl}/dashboard/reports/${report.id})`)
+  return parts.join("\n")
+}

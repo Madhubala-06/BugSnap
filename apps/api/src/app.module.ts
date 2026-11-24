@@ -16,6 +16,7 @@ import { McpModule } from "./mcp/mcp.module"
 import { TriageModule } from "./triage/triage.module"
 import { TeamsModule } from "./teams/teams.module"
 import { WidgetModule } from "./widget/widget.module"
+import { IntegrationsModule } from "./integrations/integrations.module"
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { WidgetModule } from "./widget/widget.module"
     TriageModule,
     TeamsModule,
     WidgetModule,
+    IntegrationsModule,
   ],
   controllers: [HealthController],
 })

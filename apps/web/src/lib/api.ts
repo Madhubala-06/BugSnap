@@ -103,6 +103,7 @@ export interface BugReport {
   assigneeId?: string | null
   project?: { id: string; name: string; color: string } | null
   projectId?: string | null
+  links?: ReportLink[]
   shareToken?: string | null
   errorSignature?: string | null
   aiStatus?: string | null
@@ -446,3 +447,54 @@ export async function configureWidget(id: string, body: { enabled?: boolean; con
     "Could not update the widget"
   )
 }
+
+// ---------- integrations ----------
+export type Provider = "github" | "linear" | "jira" | "slack"
+
+export interface ReportLink {
+  id: string
+  provider: Provider
+  key: string
+  url: string
+  state?: string | null
+  createdAt: string
+}
+
+export interface IntegrationsState {
+  available: Record<Provider, boolean>
+  githubInstallUrl: string | null
+  connected: Partial<Record<Provider, { config: Record<string, unknown>; connectedAt: string }>>
+}
+
+export const getIntegrations = async (): Promise<IntegrationsState> => json(await authFetch(`${API_URL}/integrations`), "Could not load integrations")
+
+export const githubInstallUrl = async (): Promise<{ url: string }> => json(await authFetch(`${API_URL}/integrations/github/install`), "GitHub is not available")
+
+export const githubRepos = async (): Promise<{ fullName: string; private: boolean }[]> => json(await authFetch(`${API_URL}/integrations/github/repos`), "Could not load repositories")
+
+export async function connectIntegration(provider: Provider, body: Record<string, unknown>): Promise<IntegrationsState> {
+  return json(
+    await authFetch(`${API_URL}/integrations/${provider}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+    `Could not connect ${provider}`
+  )
+}
+
+export async function updateIntegration(provider: Provider, body: Record<string, unknown>) {
+  return json(
+    await authFetch(`${API_URL}/integrations/${provider}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+    "Could not save"
+  )
+}
+
+export const disconnectIntegration = async (provider: Provider) =>
+  json(await authFetch(`${API_URL}/integrations/${provider}`, { method: "DELETE" }), "Could not disconnect")
+
+export async function createExternalIssue(reportId: string, provider: Provider, target?: string): Promise<ReportLink> {
+  return json(
+    await authFetch(`${API_URL}/reports/${reportId}/issues`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, target }) }),
+    `Could not create the ${provider} issue`
+  )
+}
+
+export const refreshExternalIssues = async (reportId: string): Promise<ReportLink[]> =>
+  json(await authFetch(`${API_URL}/reports/${reportId}/issues/refresh`, { method: "POST" }), "Could not refresh")

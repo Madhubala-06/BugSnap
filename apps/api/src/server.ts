@@ -7,6 +7,8 @@ import { AppModule } from "./app.module"
 export async function createApp() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
+    // Webhooks (GitHub, Linear) are verified against the exact bytes they sent.
+    rawBody: true,
     logger: process.env.NODE_ENV === "production" ? ["error", "warn"] : undefined,
   })
 

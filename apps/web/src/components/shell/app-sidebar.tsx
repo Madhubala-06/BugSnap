@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Bot, Bug, Check, ChevronDown, Inbox, LayoutGrid, LogOut, Moon, Plus, Puzzle, Settings, Sun, User, UserPlus, Users } from "lucide-react"
+import { Blocks, Bot, Bug, Check, ChevronDown, Inbox, LayoutGrid, LogOut, Moon, Plus, Puzzle, Settings, Sun, User, UserPlus, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMe } from "@/components/auth-gate"
 import { useTheme } from "@/components/theme-provider"
@@ -161,6 +161,7 @@ export function AppSidebar() {
 
         <div className="mt-4 px-2 pb-1 text-[11px] font-medium text-foreground-muted">Workspace</div>
         <NavLink href="/dashboard/team" icon={<Users className={icon} />} label="Team" count={me?.workspace.members && me.workspace.members > 1 ? me.workspace.members : undefined} active={pathname === "/dashboard/team"} />
+        <NavLink href="/dashboard/integrations" icon={<Blocks className={icon} />} label="Integrations" active={pathname === "/dashboard/integrations"} />
         <NavLink href="/dashboard/settings#extension" icon={<Puzzle className={icon} />} label="Chrome extension" active={false} />
         <NavLink href="/dashboard/settings#agents" icon={<Bot className={icon} />} label="AI agents (MCP)" active={false} />
         <NavLink href="/dashboard/settings" icon={<Settings className={icon} />} label="Settings" active={pathname === "/dashboard/settings"} />

@@ -20,6 +20,11 @@ import {
 } from "lucide-react"
 import {
   analyzeReport,
+  createExternalIssue,
+  getIntegrations,
+  refreshExternalIssues,
+  type IntegrationsState,
+  type Provider,
   deleteBugReport,
   getAiStatus,
   getBugReport,
@@ -49,6 +54,8 @@ import { githubIssueUrl } from "@/components/report/report-actions"
 import { EventList, PlayerProvider, SyncedPlayer, timeEvents } from "@/components/report/synced-player"
 import { ReportDetails } from "@/components/report/report-details"
 import { ActivityFeed } from "@/components/report/activity-feed"
+import { GithubMark, JiraMark, LinearMark } from "@/components/brand/logos"
+import Link from "next/link"
 
 const strip = (html?: string | null) => (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
 
@@ -74,6 +81,8 @@ export default function ReportPage() {
   const [repo, setRepo] = useState<string | null>(null)
   const [repoInput, setRepoInput] = useState("")
   const [activityKey, setActivityKey] = useState(0)
+  const [tools, setTools] = useState<IntegrationsState | null>(null)
+  const [creating, setCreating] = useState<Provider | null>(null)
   const autoRetried = useRef(false)
   const me = useMe()
   const canEdit = can(me, "member")
@@ -98,7 +107,18 @@ export default function ReportPage() {
   useEffect(() => {
     load()
     getAiStatus().then((s) => setRepo(s.githubRepo)).catch(() => undefined)
+    getIntegrations().then(setTools).catch(() => undefined)
   }, [load])
+
+  // Jira has no webhooks for API tokens: refresh linked ticket status when the page opens.
+  const hasJira = report?.links?.some((l) => l.provider === "jira")
+  useEffect(() => {
+    if (!hasJira || !report) return
+    refreshExternalIssues(report.id)
+      .then((links) => setReport((r) => (r ? { ...r, links } : r)))
+      .catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasJira, report?.id])
 
   useCrumbs(
     report
@@ -273,6 +293,27 @@ export default function ReportPage() {
                 aria-label="Bug title"
                 className="block w-full resize-none overflow-hidden rounded-md bg-transparent text-[22px] font-semibold leading-tight tracking-tight text-foreground outline-none hover:bg-background-secondary/60 focus:bg-background-secondary/60"
               />
+              {report.links && report.links.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {report.links.map((l) => {
+                    const Logo = l.provider === "github" ? GithubMark : l.provider === "linear" ? LinearMark : JiraMark
+                    const closed = /^(closed|done|completed|canceled|cancelled)$/i.test(l.state ?? "")
+                    return (
+                      <a
+                        key={l.id}
+                        href={l.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 text-[12px] text-foreground-secondary hover:border-border-hover hover:text-foreground"
+                      >
+                        <Logo className="h-3.5 w-3.5" />
+                        <span className="font-mono">{l.key}</span>
+                        {l.state && <span className={closed ? "text-violet-400" : "text-emerald-500"}>· {l.state}</span>}
+                      </a>
+                    )
+                  })}
+                </div>
+              )}
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-foreground-muted">
                 {!report.reporter && info.source === "widget" && (
                   <span className="inline-flex items-center gap-1.5">
@@ -310,18 +351,44 @@ export default function ReportPage() {
                 <MenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium outline-none hover:bg-background-tertiary">
                   <Github className="h-4 w-4" />Create issue<ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
                 </MenuTrigger>
-                <MenuContent align="end">
-                  <MenuItem onSelect={() => (repo ? openGithub(repo) : setRepoDialog(true))}>
-                    <Github className="h-4 w-4" />GitHub<MenuHint>{repo ?? "choose repo"}</MenuHint>
-                  </MenuItem>
-                  <MenuItem disabled>Linear<MenuHint>soon</MenuHint></MenuItem>
-                  <MenuItem disabled>Jira<MenuHint>soon</MenuHint></MenuItem>
-                  {repo && (
-                    <>
-                      <MenuSeparator />
-                      <MenuItem onSelect={() => setRepoDialog(true)}>Change GitHub repository</MenuItem>
-                    </>
+                <MenuContent align="end" className="w-64">
+                  {(["github", "linear", "jira"] as Provider[]).filter((p) => tools?.connected[p]).map((p) => {
+                    const cfg = (tools?.connected[p]?.config ?? {}) as Record<string, string>
+                    const target = p === "github" ? cfg.defaultRepo : p === "linear" ? ((cfg.teams as unknown as { id: string; key: string }[]) ?? []).find((t) => t.id === cfg.teamId)?.key : cfg.projectKey
+                    const Logo = p === "github" ? GithubMark : p === "linear" ? LinearMark : JiraMark
+                    return (
+                      <MenuItem
+                        key={p}
+                        disabled={!canEdit || creating !== null}
+                        onSelect={async () => {
+                          setCreating(p)
+                          const t = toast.loading(`Creating the ${p === "github" ? "GitHub" : p === "linear" ? "Linear" : "Jira"} issue…`)
+                          try {
+                            const link = await createExternalIssue(report.id, p)
+                            merge({ links: [...(report.links ?? []), link] })
+                            toast.success(<span>Created <a className="underline" href={link.url} target="_blank" rel="noreferrer">{link.key}</a></span>, { id: t })
+                          } catch (err) {
+                            toast.error(err instanceof Error ? err.message : "Could not create the issue", { id: t })
+                          } finally {
+                            setCreating(null)
+                          }
+                        }}
+                      >
+                        <Logo className="h-4 w-4" />
+                        {p === "github" ? "GitHub" : p === "linear" ? "Linear" : "Jira"}
+                        <MenuHint>{target ?? "choose default"}</MenuHint>
+                      </MenuItem>
+                    )
+                  })}
+                  {!(["github", "linear", "jira"] as Provider[]).some((p) => tools?.connected[p]) && (
+                    <MenuItem onSelect={() => (repo ? openGithub(repo) : setRepoDialog(true))}>
+                      <Github className="h-4 w-4" />Open a GitHub issue page<MenuHint>{repo ?? "choose repo"}</MenuHint>
+                    </MenuItem>
                   )}
+                  <MenuSeparator />
+                  <MenuItem asChild>
+                    <Link href="/dashboard/integrations">Connect GitHub, Linear or Jira…</Link>
+                  </MenuItem>
                 </MenuContent>
               </Menu>
               {canEdit && <Tip label={report.shareToken ? "Copy the share link" : "Create a read-only link"}>
