@@ -240,10 +240,17 @@ export class IntegrationsService {
               await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: isDone ? "closed" : "open" } })
             } else if (l.provider === "linear") {
               const s = this.secret<{ apiKey: string }>(row)
-              if (s) await linearSetStateType(s.apiKey, l.externalId, isDone ? (to === "WONT_FIX" ? "canceled" : "completed") : "unstarted")
+              if (s) {
+                await linearSetStateType(s.apiKey, l.externalId, isDone ? (to === "WONT_FIX" ? "canceled" : "completed") : "unstarted")
+                await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: isDone ? (to === "WONT_FIX" ? "Canceled" : "Done") : "Todo" } })
+              }
             } else if (l.provider === "jira") {
               const s = this.secret<JiraCreds>(row)
-              if (s) await jiraMoveTo(s, l.externalId, isDone ? "done" : "new")
+              if (s) {
+                await jiraMoveTo(s, l.externalId, isDone ? "done" : "new")
+                const st = await jiraStatus(s, l.externalId).catch(() => null)
+                if (st) await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: st.name } })
+              }
             }
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error)
@@ -281,15 +288,15 @@ export class IntegrationsService {
     if (!s) return
     for (const l of links) {
       const st = await jiraStatus(s, l.externalId).catch(() => null)
-      if (st && st.name !== l.state) await this.applyExternal("jira", l.externalId, st.category === "done", `${l.key} moved to ${st.name}`, st.name)
+      // applyExternal only changes the bug when Jira and BugSnap disagree, so this is safe to run every time.
+      if (st) await this.applyExternal("jira", l.externalId, st.category === "done", `${l.key} moved to ${st.name}`, st.name)
     }
   }
 
   // ---------- Slack alerts ----------
 
-  notifySlack(workspaceId: string, event: "created" | "assigned" | "resolved", reportId: string, extra?: string) {
-    background(
-      (async () => {
+  async notifySlack(workspaceId: string, event: "created" | "assigned" | "resolved", reportId: string, extra?: string) {
+    const job = (async () => {
         const row = await this.get(workspaceId, "slack")
         if (!row) return
         const events = cleanEvents((row.config as Cfg).events)
@@ -302,8 +309,10 @@ export class IntegrationsService {
           s.webhookUrl,
           slackMessage({ headline, bug: `BUG-${report.number ?? ""}`, title: report.title, severity: report.severity, url: `${appUrl()}/dashboard/reports/${report.id}`, page: report.url, extra })
         )
-      })()
-    )
+      })().catch((e) => console.error(`Slack alert failed: ${e instanceof Error ? e.message : e}`))
+    // Serverless can freeze right after the response, so wait (briefly) for Slack.
+    await Promise.race([job, new Promise((r) => setTimeout(r, 5000))])
+    background(job)
   }
 
   async jiraProjects(workspaceId: string) {

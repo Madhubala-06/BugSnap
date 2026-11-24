@@ -154,7 +154,7 @@ export class ReportsService {
       ...(auth.reporter?.email ? { email: auth.reporter.email } : {}),
     })
     if (data.analyze) this.runAiInBackground(auth.workspaceId, report.id)
-    else this.integrations.notifySlack(auth.workspaceId, "created", report.id, auth.source === "widget" ? `Reported from the website${auth.reporter?.email ? ` by ${auth.reporter.email}` : ""}` : undefined)
+    else await this.integrations.notifySlack(auth.workspaceId, "created", report.id, auth.source === "widget" ? `Reported from the website${auth.reporter?.email ? ` by ${auth.reporter.email}` : ""}` : undefined)
     return { ...report, analysis, aiError }
   }
 
@@ -164,7 +164,7 @@ export class ReportsService {
     if (attempts === 1) {
       const r = await this.prisma.bugReport.findUnique({ where: { id }, select: { browserInfo: true } })
       const info = (r?.browserInfo ?? {}) as { source?: string; reporter?: { email?: string } }
-      this.integrations.notifySlack(workspaceId, "created", id, info.source === "widget" ? `Reported from the website${info.reporter?.email ? ` by ${info.reporter.email}` : ""}` : undefined)
+      await this.integrations.notifySlack(workspaceId, "created", id, info.source === "widget" ? `Reported from the website${info.reporter?.email ? ` by ${info.reporter.email}` : ""}` : undefined)
     }
   }
 
@@ -389,14 +389,14 @@ export class ReportsService {
     if (allowed.status !== undefined && allowed.status !== before.status) {
       await logActivity(this.prisma, id, actor, "status", { from: before.status, to: allowed.status })
       await this.integrations.onStatusChange(workspaceId, id, before.status, allowed.status as ReportStatus)
-      if (["RESOLVED", "CLOSED"].includes(String(allowed.status))) this.integrations.notifySlack(workspaceId, "resolved", id)
+      if (["RESOLVED", "CLOSED"].includes(String(allowed.status))) await this.integrations.notifySlack(workspaceId, "resolved", id)
     }
     if (allowed.assigneeId !== undefined && allowed.assigneeId !== before.assigneeId) {
       await logActivity(this.prisma, id, actor, "assignee", { to: allowed.assigneeId })
       if (allowed.assigneeId && actor) notifyAssigned(this.prisma, this.mailer, id, String(allowed.assigneeId), actor)
       if (allowed.assigneeId) {
         const who = await this.prisma.user.findUnique({ where: { id: String(allowed.assigneeId) }, select: { name: true } })
-        this.integrations.notifySlack(workspaceId, "assigned", id, who ? `Assigned to *${who.name}*` : undefined)
+        await this.integrations.notifySlack(workspaceId, "assigned", id, who ? `Assigned to *${who.name}*` : undefined)
       }
     }
     if (allowed.priority !== undefined && allowed.priority !== before.priority) await logActivity(this.prisma, id, actor, "priority", { from: before.priority, to: allowed.priority })
