@@ -1,0 +1,143 @@
+{
+  "protect": [
+    {
+      "pattern": "(^|/)\\.env(\\.(?!example$)[\\w.]+)?$",
+      "reason": "real env files hold secrets. Edit the .env.example next to it and tell the owner which value to set."
+    },
+    {
+      "pattern": "\\.(pem|key|p12)$",
+      "reason": "key files are secrets."
+    },
+    {
+      "pattern": "(^|/)pnpm-lock\\.yaml$",
+      "reason": "the lockfile is written by pnpm, not by hand. Ask the owner to run pnpm install."
+    },
+    {
+      "pattern": "(^|/)(dist|build|\\.next|\\.plasmo|\\.vercel)/",
+      "reason": "generated output. Change the source instead."
+    },
+    {
+      "pattern": "^apps/python-api/",
+      "reason": "retired code, not deployed. Do not extend it."
+    }
+  ],
+  "protectIfCommitted": [
+    {
+      "pattern": "^apps/api/prisma/migrations/[^/]+/migration\\.sql$",
+      "reason": "this migration is committed and may already be applied to production. Add a new migration instead (npx prisma migrate dev --name ...)."
+    }
+  ],
+  "bash": {
+    "deny": [
+      {
+        "pattern": "git\\s+push\\b.*(--force|\\s-f\\b|--force-with-lease)",
+        "reason": "never force push."
+      },
+      {
+        "pattern": "git\\s+(reset\\s+--hard|clean\\s+-[a-z]*f)",
+        "reason": "destroys uncommitted work. Ask the owner."
+      },
+      {
+        "pattern": "prisma\\s+migrate\\s+reset|DROP\\s+(DATABASE|TABLE|SCHEMA)|dropdb\\b",
+        "reason": "wipes data."
+      },
+      {
+        "pattern": "rm\\s+-[a-z]*r[a-z]*f?\\s+(/|~|\\$HOME|\\.\\s*$|\\*)",
+        "reason": "deletes far too much."
+      },
+      {
+        "pattern": "(cat|less|more|head|tail|bat)\\s+[^|;&]*\\.env(\\s|$)|\\bprintenv\\b|^\\s*env\\s*$",
+        "reason": "prints secrets into the transcript."
+      }
+    ],
+    "ask": [
+      {
+        "pattern": "git\\s+(commit|push|merge|rebase|tag)\\b",
+        "reason": "Commits, pushes and merges need the owner's explicit go-ahead (AGENTS.md hard rule 1)."
+      },
+      {
+        "pattern": "\\bvercel\\b.*(deploy|--prod|env\\s+(add|rm))|\\bgh\\s+(pr\\s+merge|release)|npm\\s+publish",
+        "reason": "Deploys, releases and production env changes need the owner's go-ahead."
+      },
+      {
+        "pattern": "\\b(pnpm|npm|yarn)\\s+(install|add|i)\\b|\\bnpx\\s+-y\\s+pnpm",
+        "reason": "Installing or adding packages changes the lockfile and node_modules. Confirm with the owner first."
+      },
+      {
+        "pattern": "prisma\\s+migrate\\s+deploy|prisma\\s+db\\s+(push|execute)",
+        "reason": "This writes to a database. Make sure it is the local one."
+      }
+    ]
+  },
+  "format": [
+    {
+      "match": "^(apps/(api|web|extension)/(src|test)/.+\\.(ts|tsx|css|cjs)|action/.+\\.mjs|scripts/.+\\.mjs|\\.claude/hooks/.+\\.mjs)$",
+      "cwd": ".",
+      "steps": [
+        [
+          "npx",
+          "--yes",
+          "prettier@3.3.3",
+          "--write",
+          "{file}"
+        ]
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "Formatting",
+      "match": "\\.(ts|tsx|css|cjs|mjs)$",
+      "run": "npx --yes prettier@3.3.3 --check \"apps/api/src/**/*.ts\" \"apps/web/src/**/*.{ts,tsx,css}\" \"apps/extension/src/**/*.{ts,tsx}\" \"action/*.mjs\" >/dev/null || (echo 'Run: npx prettier@3.3.3 --write <file>' && exit 1)",
+      "timeoutSec": 120
+    },
+    {
+      "name": "API typecheck + tests",
+      "match": "^apps/api/",
+      "cwd": "apps/api",
+      "run": "npx tsc --noEmit -p . && npm test",
+      "timeoutSec": 300
+    },
+    {
+      "name": "Web typecheck",
+      "match": "^apps/web/",
+      "cwd": "apps/web",
+      "run": "npx tsc --noEmit -p .",
+      "timeoutSec": 180
+    },
+    {
+      "name": "Extension typecheck",
+      "match": "^apps/extension/",
+      "cwd": "apps/extension",
+      "run": "npx tsc --noEmit -p .",
+      "timeoutSec": 180
+    },
+    {
+      "name": "Action syntax",
+      "match": "^action/",
+      "run": "node --check action/verify.mjs"
+    },
+    {
+      "name": "Agent setup",
+      "match": "^(AGENTS\\.md|CLAUDE\\.md|\\.claude/|docs/agent-mistakes\\.md|apps/api/\\.env\\.example)",
+      "run": "node scripts/check-agent-setup.mjs && node .claude/hooks/test-hooks.mjs"
+    }
+  ],
+  "ci": {
+    "migrationsDir": "apps/api/prisma/migrations",
+    "envDocs": [
+      {
+        "src": "apps/api/src",
+        "example": "apps/api/.env.example",
+        "patterns": [
+          "process\\.env\\.([A-Z][A-Z0-9_]+)",
+          "config\\.get\\(\"([A-Z][A-Z0-9_]+)\""
+        ],
+        "ignore": [
+          "NODE_ENV",
+          "BUGSNAP_BASE_URL"
+        ]
+      }
+    ]
+  }
+}

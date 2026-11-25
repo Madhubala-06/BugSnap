@@ -11,7 +11,7 @@ Record a bug once. BugSnap captures the screen, clicks, console errors and faile
 - **Works without AI too:** a plain description and steps are built from the timeline.
 - **Fix with AI:** one click copies a prompt for Cursor, Claude Code or Copilot with the exact errors, timeline and a regression test.
 - **Regression test:** a Playwright test generated from the recorded steps. It fails while the bug exists and passes once it is fixed.
-- **MCP server for coding agents:** `https://bugsnap-api.vercel.app/mcp`. Tools: `list_bug_reports`, `get_bug_report`, `get_playwright_test`, `update_bug_status`. Create a key in Settings, then:
+- **MCP server for coding agents:** `https://bugsnap-api.vercel.app/mcp`. Tools: `list_bug_reports`, `get_bug_report`, `get_playwright_test`, `get_fix_prompt`, `update_bug_status`, `add_comment`, `report_test_result`, `get_verification_status`, `open_fix_pull_request`. IDs like `BUG-12` work. Create a key in Settings, then:
   `claude mcp add --transport http bugsnap https://bugsnap-api.vercel.app/mcp --header "Authorization: Bearer bsk_..."`
 - **Duplicates:** reports with the same error on the same page are grouped ("seen 3 times").
 - **Share:** read-only public links (`/r/<token>`), one-click GitHub issues (pre-filled, nothing is posted for you), Copy as Markdown, CSV export.
@@ -63,6 +63,16 @@ Locally, no email is sent: the sign-in code is shown on the login screen. Add a 
 
 1. `pnpm --filter @bugsnap/extension build` (uses `.env.production`, so it talks to the live API). Use `dev` for localhost.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, pick `apps/extension/build/chrome-mv3-prod` (or `chrome-mv3-dev`).
+
+## Built with AI agents
+
+Most of this code is written by AI coding agents and reviewed and tested by me. The repo is set up so agents work safely:
+
+- [`AGENTS.md`](AGENTS.md): rules, conventions and commands every agent reads (Claude Code via `CLAUDE.md`, Cursor via `.cursor/rules`).
+- [`.claude/settings.json`](.claude/settings.json) hooks: block edits to secrets, lockfiles and committed migrations; ask before commits, pushes, deploys and installs; format after edits; run the checks for whatever changed before the agent can finish. Tested by `node .claude/hooks/test-hooks.mjs`.
+- [`.claude/agents/`](.claude/agents): `code-reviewer`, `test-writer` and `migration-checker` sub-agents.
+- CI guardrails: secret scan, env settings documented, migrations ordered and in sync with the schema, extension bundle free of Node-only code, formatting, and the hook tests.
+- [`docs/agent-mistakes.md`](docs/agent-mistakes.md): every real agent mistake and the rule that now prevents it.
 
 ## Tests
 

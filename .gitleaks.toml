@@ -1,0 +1,7 @@
+# Secret scanning (CI). Test files use fake webhook URLs and keys on purpose.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake values used in tests and docs"
+paths = ['''apps/api/test/''', '''\.md$''', '''pnpm-lock\.yaml$''']

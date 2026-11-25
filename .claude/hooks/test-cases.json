@@ -1,0 +1,22 @@
+[
+  { "name": "edit .env is blocked", "hook": "protect-files.mjs", "input": { "tool_input": { "file_path": "apps/api/.env" } }, "expect": "block" },
+  { "name": "edit .env.production is blocked", "hook": "protect-files.mjs", "input": { "tool_input": { "file_path": "apps/extension/.env.production" } }, "expect": "block" },
+  { "name": "edit .env.example is allowed", "hook": "protect-files.mjs", "input": { "tool_input": { "file_path": "apps/api/.env.example" } }, "expect": "allow" },
+  { "name": "edit lockfile is blocked", "hook": "protect-files.mjs", "input": { "tool_input": { "file_path": "pnpm-lock.yaml" } }, "expect": "block" },
+  { "name": "edit committed migration is blocked", "hook": "protect-files.mjs", "input": { "tool_input": { "file_path": "apps/api/prisma/migrations/20261125190000_verifications/migration.sql" } }, "expect": "block" },
+  { "name": "new migration is allowed", "hook": "protect-files.mjs", "input": { "tool_input": { "file_path": "apps/api/prisma/migrations/29991231000000_new/migration.sql" } }, "expect": "allow" },
+  { "name": "edit source is allowed", "hook": "protect-files.mjs", "input": { "tool_input": { "file_path": "apps/api/src/reports/reports.service.ts" } }, "expect": "allow" },
+  { "name": "build output is blocked", "hook": "protect-files.mjs", "input": { "tool_input": { "file_path": "apps/extension/build/chrome-mv3-prod/manifest.json" } }, "expect": "block" },
+  { "name": "force push is refused", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "git push --force origin main" } }, "expect": "block" },
+  { "name": "push asks first", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "git push origin local-changes" } }, "expect": "ask" },
+  { "name": "commit asks first", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "git commit -m 'x'" } }, "expect": "ask" },
+  { "name": "prod deploy asks first", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "cd apps/api && vercel deploy --prod --yes" } }, "expect": "ask" },
+  { "name": "install asks first", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "pnpm install --lockfile-only" } }, "expect": "ask" },
+  { "name": "hard reset refused", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "git reset --hard HEAD~1" } }, "expect": "block" },
+  { "name": "db reset refused", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "npx prisma migrate reset --force" } }, "expect": "block" },
+  { "name": "printing .env refused", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "cat apps/api/.env" } }, "expect": "block" },
+  { "name": "printenv refused", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "printenv" } }, "expect": "block" },
+  { "name": "tests are allowed", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "cd apps/api && npm test" } }, "expect": "allow" },
+  { "name": "git status is allowed", "hook": "guard-bash.mjs", "input": { "tool_input": { "command": "git status --short" } }, "expect": "allow" },
+  { "name": "stop loop guard", "hook": "check-on-stop.mjs", "input": { "stop_hook_active": true }, "expect": "allow" }
+]

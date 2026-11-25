@@ -5,8 +5,41 @@ on:
   pull_request:
 
 jobs:
-  checks:
+  # Rules that keep AI agents (and people) safe in this repo. See AGENTS.md and docs/agent-mistakes.md.
+  guardrails:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Agent rules, docs and env settings are consistent
+        run: node scripts/check-agent-setup.mjs
+      - name: Safety hooks behave as expected
+        run: node .claude/hooks/test-hooks.mjs
+      - name: Formatting
+        run: npx --yes prettier@3.3.3 --check "apps/api/src/**/*.ts" "apps/web/src/**/*.{ts,tsx,css}" "apps/extension/src/**/*.{ts,tsx}" "action/*.mjs" "scripts/*.mjs" ".claude/hooks/*.mjs"
+      - name: No secrets committed
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bugsnap
+          POSTGRES_PASSWORD: bugsnap
+          POSTGRES_DB: bugsnap
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U bugsnap" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://bugsnap:bugsnap@localhost:5432/bugsnap
+      DIRECT_URL: postgresql://bugsnap:bugsnap@localhost:5432/bugsnap
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -18,14 +51,42 @@ jobs:
           cache: pnpm
       # The lockfile may lag behind new packages; run `pnpm install` locally and commit it to make this frozen.
       - run: pnpm install --no-frozen-lockfile
-      - name: API build and tests
+      - name: Typecheck and tests
         working-directory: apps/api
         run: npx prisma generate && npx tsc --noEmit -p . && npm test
+      - name: Migrations apply cleanly to an empty database
+        working-directory: apps/api
+        run: npx prisma migrate deploy
+      - name: Schema has a migration for every change
+        working-directory: apps/api
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+
+  web-and-extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
       - name: Web typecheck
         working-directory: apps/web
         run: npx tsc --noEmit -p .
       - name: Extension typecheck
         working-directory: apps/extension
         run: npx tsc --noEmit -p .
+      - name: Extension builds
+        working-directory: apps/extension
+        run: npx plasmo build
+      - name: Extension bundle has no Node-only code
+        working-directory: apps/extension
+        run: |
+          if grep -rlE "node:(fs|path|child_process|os|crypto|net)" build/chrome-mv3-prod; then
+            echo "The extension bundle imports Node built-ins (see docs/agent-mistakes.md #5)"; exit 1
+          fi
       - name: Action syntax
         run: node --check action/verify.mjs

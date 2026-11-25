@@ -41,6 +41,8 @@ apps/api/uploads/**/*
 !apps/api/uploads/recordings/.gitkeep
 !apps/api/uploads/thumbnails/.gitkeep
 settings.json
+!.claude/settings.json
+.claude/settings.local.json
 
 # extra local Next.js build folders (NEXT_DIST_DIR)
 .next-*

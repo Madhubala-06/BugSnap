@@ -1,0 +1,8 @@
+---
+description: BugSnap project rules (read AGENTS.md)
+alwaysApply: true
+---
+
+Follow @AGENTS.md at the repo root: hard rules, conventions, commands and definition of done.
+Before similar work, read @docs/agent-mistakes.md. Every entry is a real mistake and the rule it produced.
+Never commit, push or deploy without the owner's explicit go-ahead.
