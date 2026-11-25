@@ -35,5 +35,8 @@
       "https://*/*",
       "http://localhost/*"
     ]
+  },
+  "alias": {
+    "@vercel/oidc": "./src/lib/oidc-stub.ts"
   }
 }
