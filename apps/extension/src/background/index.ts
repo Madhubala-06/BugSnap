@@ -1,6 +1,6 @@
 import type { RecordingSession, RecordingState, SessionLog, MessageType, PageInfo } from "../lib/types"
 import { DEFAULT_API_URL, DEFAULT_APP_URL, getState, setState, setSession } from "../lib/storage"
-import { getAuth, setAuth, signOut } from "../lib/auth"
+import { apiFetch, getAuth, setAuth, signOut } from "../lib/auth"
 
 const MAX_LOGS = 1000
 
@@ -37,6 +37,18 @@ async function handleMessage(message: MessageType, sender: chrome.runtime.Messag
       return addLog(message.log, sender)
     case "PAGE_INFO":
       return setPageInfo(message.info, sender)
+    case "BEGIN_RECORDING":
+      return beginRecording(message.tabId)
+    case "PAUSE_RECORDING":
+      return pause()
+    case "RESUME_RECORDING":
+      return resume()
+    case "FINISH_RECORDING":
+      return finish()
+    case "DISCARD_RECORDING":
+      return discard()
+    case "OFFSCREEN_EVENT":
+      return onOffscreenEvent(message.event, message.error)
     case "OPEN_SIGN_IN":
       return openSignIn(message.returnTabId)
     case "AUTH_SIGN_IN":
@@ -156,7 +168,8 @@ function addLog(log: SessionLog, sender: chrome.runtime.MessageSender) {
     session.droppedLogs = (session.droppedLogs ?? 0) + 1
     return { success: false }
   }
-  session.logs.push({ ...log, data: { ...log.data, tabId: sender.tab?.id } })
+  if (session.pausedAt) return { success: false } // paused: not in the video, so not in the report
+  session.logs.push({ ...shiftForPauses(log, session), data: { ...log.data, tabId: sender.tab?.id } })
   scheduleSave()
   return { success: true }
 }
@@ -190,14 +203,227 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   const session = currentState.session
   if (!currentState.isRecording || !session || changeInfo.status !== "complete" || !tab.url) return
   if (session.targetTabId && tabId !== session.targetTabId) return
+  if (session.pausedAt) return
   session.logs.push({
     type: "NAVIGATION",
     level: "INFO",
     message: `Opened ${tab.url}`,
     data: { url: tab.url, title: tab.title, tabId },
-    timestamp: new Date().toISOString(),
+    timestamp: new Date(Date.now() - (session.pausedMs ?? 0)).toISOString(),
   })
   scheduleSave()
+})
+
+
+
+// ---------- recording: countdown, pause/resume, finish, discard ----------
+
+const OFFSCREEN_URL = "tabs/offscreen.html"
+const RESTRICTED = /^(chrome|chrome-extension|edge|about|devtools|view-source):|^https:\/\/chromewebstore\.google\.com|^https:\/\/chrome\.google\.com\/webstore/
+let finishing = false
+
+/** Log times shifted back by the paused time, so they match the (shorter) video. */
+function shiftForPauses(log: SessionLog, session: RecordingSession): SessionLog {
+  const paused = session.pausedMs ?? 0
+  if (!paused) return log
+  const t = Date.parse(log.timestamp)
+  return Number.isFinite(t) ? { ...log, timestamp: new Date(t - paused).toISOString() } : log
+}
+
+async function ensureOffscreen() {
+  const contexts = await chrome.runtime.getContexts({ contextTypes: ["OFFSCREEN_DOCUMENT" as chrome.runtime.ContextType] })
+  if (contexts.length) return
+  await chrome.offscreen.createDocument({
+    url: OFFSCREEN_URL,
+    reasons: ["USER_MEDIA" as chrome.offscreen.Reason],
+    justification: "Record the tab the user is reporting a bug on",
+  })
+}
+
+async function closeOffscreen() {
+  await chrome.offscreen.closeDocument().catch(() => undefined)
+}
+
+const toOffscreen = (msg: Record<string, unknown>) =>
+  chrome.runtime.sendMessage({ target: "offscreen", ...msg }) as Promise<{ ok: boolean; error?: string } | undefined>
+
+function elapsedMs(session: RecordingSession) {
+  if (!session.startTime) return 0
+  const pausedNow = session.pausedAt ? Date.now() - session.pausedAt : 0
+  return Math.max(0, Date.now() - session.startTime - (session.pausedMs ?? 0) - pausedNow)
+}
+
+function badgeText(ms: number) {
+  const s = Math.floor(ms / 1000)
+  return s < 600 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${Math.floor(s / 60)}m`
+}
+
+async function setBadge(text: string, color = "#EF4444") {
+  await chrome.action.setBadgeBackgroundColor({ color })
+  await chrome.action.setBadgeText({ text })
+  if (chrome.action.setBadgeTextColor) await chrome.action.setBadgeTextColor({ color: "#FFFFFF" })
+}
+
+async function updateBadge() {
+  const session = currentState.session
+  if (!currentState.isRecording || !session) return
+  if (session.pausedAt) await setBadge("❚❚", "#F59E0B")
+  else await setBadge(badgeText(elapsedMs(session)))
+}
+
+async function beginRecording(tabId?: number) {
+  if (currentState.isRecording || finishing) return { ok: false, error: "Already recording" }
+  if (!(await getAuth())) return { ok: false, error: "Please sign in first." }
+  const tab = tabId ? await chrome.tabs.get(tabId).catch(() => undefined) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0]
+  if (!tab?.id || !tab.url || RESTRICTED.test(tab.url)) return { ok: false, error: "This page can't be recorded. Open the website with the bug first." }
+  try {
+    // Tab capture: records just this tab, no "choose what to share" picker.
+    const streamId = await new Promise<string>((resolve, reject) =>
+      chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (id) => (chrome.runtime.lastError || !id ? reject(new Error(chrome.runtime.lastError?.message || "Tab capture failed")) : resolve(id)))
+    )
+    await ensureOffscreen()
+    const ready = await toOffscreen({ type: "PREPARE", streamId })
+    if (!ready?.ok) throw new Error(ready?.error || "Could not start the tab recording")
+  } catch (e) {
+    await closeOffscreen()
+    return { ok: false, error: e instanceof Error ? e.message : "Could not start recording" }
+  }
+  currentState = { isRecording: false, session: null }
+  // 3-2-1 on the page (and on the badge, in case the page can't show it).
+  void runCountdown(tab.id)
+  return { ok: true }
+}
+
+async function runCountdown(tabId: number) {
+  const shown = chrome.tabs.sendMessage(tabId, { type: "SHOW_COUNTDOWN" }).catch(() => null)
+  for (const n of ["3", "2", "1"]) {
+    await setBadge(n, "#3B82F6")
+    await new Promise((r) => setTimeout(r, 800))
+  }
+  await Promise.race([shown, new Promise((r) => setTimeout(r, 400))])
+  const go = await toOffscreen({ type: "GO" }).catch(() => undefined)
+  if (!go?.ok) {
+    await setBadge("")
+    await closeOffscreen()
+    return
+  }
+  await startRecording(tabId)
+  await updateBadge()
+}
+
+async function pause() {
+  const session = currentState.session
+  if (!currentState.isRecording || !session || session.pausedAt) return { ok: false }
+  await toOffscreen({ type: "PAUSE" })
+  session.pausedAt = Date.now()
+  session.status = "paused"
+  await setState(currentState)
+  await updateBadge()
+  return { ok: true, state: currentState }
+}
+
+async function resume() {
+  const session = currentState.session
+  if (!currentState.isRecording || !session?.pausedAt) return { ok: false }
+  await toOffscreen({ type: "RESUME" })
+  session.pausedMs = (session.pausedMs ?? 0) + (Date.now() - session.pausedAt)
+  session.pausedAt = undefined
+  session.status = "recording"
+  await setState(currentState)
+  await updateBadge()
+  return { ok: true, state: currentState }
+}
+
+async function discard() {
+  await toOffscreen({ type: "CANCEL" }).catch(() => undefined)
+  if (currentState.isRecording) await stopRecording()
+  currentState = { isRecording: false, session: null }
+  await setState(currentState)
+  await setSession(null)
+  await closeOffscreen()
+  await setBadge("")
+  return { ok: true }
+}
+
+/** Stop, create the report straight away, open it in BugSnap, and let the hidden page upload the video. */
+async function finish() {
+  if (finishing) return { ok: true }
+  if (!currentState.isRecording || !currentState.session) return { ok: false, error: "No recording in progress" }
+  finishing = true
+  const live = currentState.session
+  if (live.pausedAt) {
+    live.pausedMs = (live.pausedMs ?? 0) + (Date.now() - live.pausedAt)
+    live.pausedAt = undefined
+  }
+  const durationSec = Math.round(elapsedMs(live) / 1000)
+  const stopped = await stopRecording()
+  const session = (stopped as { session?: RecordingSession }).session ?? live
+  await setBadge("…", "#3B82F6")
+  try {
+    const res = await apiFetch("/reports/quick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        page: session.metadata,
+        logs: session.logs,
+        droppedLogs: session.droppedLogs ?? 0,
+        startedAt: session.startTime,
+        duration: durationSec,
+        analyze: true,
+        mediaPending: true,
+      }),
+    })
+    if (!res.ok) throw new Error(`Saving the report failed (${res.status})`)
+    const report = (await res.json()) as { id: string }
+    const auth = await getAuth()
+    // Open the report next to the page with the bug, right away.
+    const target = session.targetTabId ? await chrome.tabs.get(session.targetTabId).catch(() => undefined) : undefined
+    await chrome.tabs.create({ url: `${DEFAULT_APP_URL}/dashboard/reports/${report.id}`, active: true, ...(target ? { index: target.index + 1, windowId: target.windowId } : {}) })
+    await toOffscreen({ type: "STOP", apiUrl: DEFAULT_API_URL, token: auth?.token ?? "", reportId: report.id, durationSec })
+    return { ok: true, reportId: report.id }
+  } catch (e) {
+    await toOffscreen({ type: "CANCEL" }).catch(() => undefined)
+    await closeOffscreen()
+    finishing = false
+    currentState = { isRecording: false, session, error: e instanceof Error ? e.message : "Could not save the report" }
+    await setState(currentState)
+    await setBadge("!", "#EF4444")
+    return { ok: false, error: currentState.error }
+  }
+}
+
+async function onOffscreenEvent(event: "tick" | "track-ended" | "done" | "error", error?: string) {
+  if (event === "tick") return updateBadge()
+  if (event === "track-ended") return currentState.isRecording ? finish() : undefined
+  // Upload finished (or failed): tidy up.
+  finishing = false
+  await closeOffscreen()
+  currentState = { isRecording: false, session: null, ...(event === "error" ? { error: error || "The video upload failed" } : {}) }
+  await setState(currentState)
+  await setSession(null)
+  await setBadge(event === "error" ? "!" : "")
+}
+
+// Keyboard shortcuts (set in the manifest).
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  await ready
+  if (command === "toggle-recording") {
+    if (currentState.isRecording) await finish()
+    else await beginRecording(tab?.id)
+  } else if (command === "pause-recording" && currentState.isRecording) {
+    if (currentState.session?.pausedAt) await resume()
+    else await pause()
+  }
+})
+
+// If the browser restarted mid-recording, the capture is gone: clear the stale state.
+ready.then(async () => {
+  const contexts = await chrome.runtime.getContexts({ contextTypes: ["OFFSCREEN_DOCUMENT" as chrome.runtime.ContextType] }).catch(() => [])
+  if (currentState.isRecording && !contexts.length) {
+    currentState = { isRecording: false, session: null }
+    await setState(currentState)
+    await setBadge("")
+  }
 })
 
 export {}

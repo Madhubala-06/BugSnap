@@ -11,10 +11,50 @@ export const config: PlasmoCSConfig = {
 
 let isCapturing = false
 
-chrome.runtime.onMessage.addListener((message: MessageType) => {
+chrome.runtime.onMessage.addListener((message: MessageType, _sender, sendResponse) => {
   if (message.type === "RECORDING_STARTED") startCapturing()
   else if (message.type === "RECORDING_STOPPED") stopCapturing()
+  else if (message.type === "SHOW_COUNTDOWN") {
+    showCountdown().then(() => sendResponse({ ok: true }))
+    return true
+  }
 })
+
+/** Big 3-2-1 in the middle of the page. Removed before the video starts. */
+function showCountdown(): Promise<void> {
+  return new Promise((resolve) => {
+    const host = document.createElement("div")
+    host.style.cssText = "position:fixed;inset:0;z-index:2147483647;pointer-events:none"
+    const root = host.attachShadow({ mode: "closed" })
+    root.innerHTML = `
+      <style>
+        .wrap{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,10,11,.35);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+        .card{display:flex;flex-direction:column;align-items:center;gap:10px}
+        .num{width:120px;height:120px;border-radius:999px;display:grid;place-items:center;background:rgba(17,17,19,.92);color:#fff;font-size:56px;font-weight:600;box-shadow:0 0 0 6px rgba(59,130,246,.35),0 20px 60px rgba(0,0,0,.5);animation:pop .8s ease-out}
+        .hint{color:#fff;font-size:14px;background:rgba(17,17,19,.85);padding:6px 12px;border-radius:999px}
+        @keyframes pop{0%{transform:scale(.6);opacity:0}30%{transform:scale(1.05);opacity:1}100%{transform:scale(1)}}
+        @media (prefers-reduced-motion: reduce){.num{animation:none}}
+      </style>
+      <div class="wrap"><div class="card"><div class="num">3</div><div class="hint">BugSnap is about to record this tab</div></div></div>`
+    document.documentElement.appendChild(host)
+    const num = root.querySelector(".num") as HTMLElement
+    let n = 3
+    const timer = setInterval(() => {
+      n -= 1
+      if (n > 0) {
+        num.textContent = String(n)
+        num.style.animation = "none"
+        void num.offsetWidth
+        num.style.animation = ""
+        return
+      }
+      clearInterval(timer)
+      host.remove()
+      // Let the page repaint without the overlay before recording starts.
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    }, 800)
+  })
+}
 
 chrome.runtime
   .sendMessage({ type: "GET_STATUS" })

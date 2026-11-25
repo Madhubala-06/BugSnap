@@ -29,12 +29,28 @@
       "storage",
       "tabs",
       "scripting",
-      "webNavigation"
+      "webNavigation",
+      "tabCapture",
+      "offscreen"
     ],
     "host_permissions": [
       "https://*/*",
       "http://localhost/*"
-    ]
+    ],
+    "commands": {
+      "toggle-recording": {
+        "suggested_key": {
+          "default": "Alt+Shift+R"
+        },
+        "description": "Start recording this tab, or finish the recording"
+      },
+      "pause-recording": {
+        "suggested_key": {
+          "default": "Alt+Shift+P"
+        },
+        "description": "Pause or resume the recording"
+      }
+    }
   },
   "alias": {
     "@vercel/oidc": "./src/lib/oidc-stub.ts"

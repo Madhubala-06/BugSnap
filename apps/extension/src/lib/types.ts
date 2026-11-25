@@ -1,4 +1,4 @@
-export type RecordingStatus = "idle" | "recording" | "processing" | "uploading" | "done" | "error"
+export type RecordingStatus = "idle" | "countdown" | "recording" | "paused" | "processing" | "uploading" | "done" | "error"
 
 export interface SessionLog {
   type: "CONSOLE" | "NETWORK" | "CLICK" | "ERROR" | "NAVIGATION" | "INPUT"
@@ -26,6 +26,10 @@ export interface RecordingSession {
   logs: SessionLog[]
   droppedLogs?: number
   metadata: PageInfo
+  /** When the current pause began (ms), if paused. */
+  pausedAt?: number
+  /** Total paused time so far (ms). Paused parts are not in the video. */
+  pausedMs?: number
 }
 
 export interface RecordingState {
@@ -47,3 +51,10 @@ export type MessageType =
   | { type: "AUTH_SIGN_IN"; token: string; email: string; name?: string; workspaceName?: string }
   | { type: "AUTH_SIGN_OUT" }
   | { type: "OPEN_SIGN_IN"; returnTabId?: number }
+  | { type: "BEGIN_RECORDING"; tabId?: number }
+  | { type: "PAUSE_RECORDING" }
+  | { type: "RESUME_RECORDING" }
+  | { type: "FINISH_RECORDING" }
+  | { type: "DISCARD_RECORDING" }
+  | { type: "SHOW_COUNTDOWN" }
+  | { type: "OFFSCREEN_EVENT"; event: "tick" | "track-ended" | "done" | "error"; error?: string }

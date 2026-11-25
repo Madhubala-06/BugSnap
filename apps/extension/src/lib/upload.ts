@@ -6,8 +6,10 @@ import { apiFetch } from "./auth"
  * file goes straight to storage (no size limit from the API). In local dev the
  * file is posted to the API.
  */
-export async function uploadFile(kind: "recording" | "screenshot", blob: Blob, name: string): Promise<string> {
-  const tokenRes = await apiFetch("/upload/token", {
+type Fetcher = (path: string, init?: RequestInit) => Promise<Response>
+
+export async function uploadFile(kind: "recording" | "screenshot", blob: Blob, name: string, fetcher: Fetcher = apiFetch): Promise<string> {
+  const tokenRes = await fetcher("/upload/token", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ kind, contentType: blob.type }),
@@ -27,7 +29,7 @@ export async function uploadFile(kind: "recording" | "screenshot", blob: Blob, n
 
   const form = new FormData()
   form.append("file", blob, name)
-  const res = await apiFetch(kind === "recording" ? "/upload/recording" : "/upload/thumbnail", { method: "POST", body: form })
+  const res = await fetcher(kind === "recording" ? "/upload/recording" : "/upload/thumbnail", { method: "POST", body: form })
   if (!res.ok) throw new Error(`Upload failed (${res.status})`)
   return (await res.json()).url as string
 }

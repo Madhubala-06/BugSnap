@@ -25,6 +25,8 @@ export interface QuickReportInput {
   logs?: CapturedLog[]
   droppedLogs?: number
   analyze?: boolean
+  /** The extension creates the report first and attaches the video a moment later (POST /reports/:id/media). */
+  mediaPending?: boolean
   /** When screen recording started (ms since epoch), to line the video up with the logs. */
   startedAt?: number
   /** What the person reporting wrote in their own words (website widget). */
@@ -134,6 +136,7 @@ export class ReportsService {
             logSummary: summarizeLogs(logs),
             droppedLogs: data.droppedLogs ?? 0,
             aiError,
+            ...(data.mediaPending ? { mediaPending: true, mediaPendingSince: Date.now() } : {}),
           } as Prisma.InputJsonValue,
         },
       })
@@ -153,6 +156,8 @@ export class ReportsService {
       source: auth.source ?? "extension",
       ...(auth.reporter?.email ? { email: auth.reporter.email } : {}),
     })
+    // With media still uploading, the AI and the Slack alert wait for attachMedia().
+    if (data.mediaPending) return { ...report, analysis, aiError }
     if (data.analyze) this.runAiInBackground(auth.workspaceId, report.id)
     else await this.integrations.notifySlack(auth.workspaceId, "created", report.id, auth.source === "widget" ? `Reported from the website${auth.reporter?.email ? ` by ${auth.reporter.email}` : ""}` : undefined)
     return { ...report, analysis, aiError }
@@ -237,6 +242,24 @@ export class ReportsService {
   }
 
   /** Button "Generate AI write-up": runs in the background, the page polls for the result. */
+  /** The extension uploaded the video and screenshots after creating the report: attach them, then run the AI. */
+  async attachMedia(workspaceId: string, id: string, data: { recordingUrl?: unknown; screenshotUrls?: unknown; duration?: unknown; error?: unknown }) {
+    const report = await this.prisma.bugReport.findFirst({ where: { id, workspaceId } })
+    if (!report) throw new NotFoundException("Report not found")
+    const info = (report.browserInfo ?? {}) as Record<string, unknown>
+    if (!info.mediaPending) return { ok: true, already: true }
+    const recordingUrl = typeof data.recordingUrl === "string" && isOwnUpload(data.recordingUrl, "recordings", workspaceId) ? data.recordingUrl : undefined
+    const screenshotUrls = (Array.isArray(data.screenshotUrls) ? data.screenshotUrls : [])
+      .filter((u): u is string => typeof u === "string" && isOwnUpload(u, "thumbnails", workspaceId))
+      .slice(0, 30)
+    const duration = typeof data.duration === "number" && Number.isFinite(data.duration) ? Math.max(0, Math.round(data.duration)) : info.duration
+    const next = { ...info, recordingUrl, screenshotUrls, duration, mediaPending: false, mediaError: typeof data.error === "string" ? data.error.slice(0, 300) : undefined }
+    await this.prisma.bugReport.update({ where: { id }, data: { browserInfo: next as Prisma.InputJsonValue } })
+    if (report.aiStatus === "pending") this.runAiInBackground(workspaceId, id)
+    else await this.integrations.notifySlack(workspaceId, "created", id)
+    return { ok: true }
+  }
+
   async analyzeAgain(workspaceId: string, id: string) {
     const report = await this.findOne(workspaceId, id)
     if (report.aiStatus === "pending" && Date.now() - report.updatedAt.getTime() < 5 * 60 * 1000) {

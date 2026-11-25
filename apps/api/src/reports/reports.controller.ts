@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Header } from "@nestjs/common"
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Header, HttpCode } from "@nestjs/common"
 import { toFixPrompt, toPlaywrightTest } from "./formats"
 import { ReportsService, type QuickReportInput } from "./reports.service"
 import { Severity, ReportStatus } from "@prisma/client"
@@ -61,6 +61,13 @@ export class ReportsController {
   }
 
   @MinRole("member")
+  @MinRole("member")
+  @Post(":id/media")
+  @HttpCode(200)
+  attachMedia(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: Record<string, unknown>) {
+    return this.reports.attachMedia(auth.workspaceId, id, body ?? {})
+  }
+
   @Post(":id/analyze")
   analyze(@Auth() auth: AuthContext, @Param("id") id: string) {
     return this.reports.analyzeAgain(auth.workspaceId, id)

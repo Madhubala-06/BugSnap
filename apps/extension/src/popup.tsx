@@ -114,9 +114,13 @@ function SignedIn({ auth, onSignOut }: { auth: StoredAuth; onSignOut: () => void
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   useEffect(() => {
-    chrome.runtime.sendMessage({ type: "GET_STATUS" }).then((r) => r?.state && setState(r.state)).catch(() => undefined)
+    chrome.runtime.sendMessage({ type: "GET_STATUS" }).then((r) => {
+      if (r?.state) setState(r.state)
+      if (r?.state?.error) setError(r.state.error)
+    }).catch(() => undefined)
   }, [])
   useEffect(() => {
     if (!state.isRecording) return
@@ -133,37 +137,39 @@ function SignedIn({ auth, onSignOut }: { auth: StoredAuth; onSignOut: () => void
     }
   })()
 
-  const start = async () => {
+  const send = async (type: string, extra: Record<string, unknown> = {}) => {
     setBusy(true)
     setError(null)
-    try {
-      const url = chrome.runtime.getURL(`tabs/recorder.html${tab?.id ? `?tabId=${tab.id}` : ""}`)
-      await chrome.tabs.create({ url, index: (tab?.index ?? 0) + 1, active: true })
-      window.close()
-    } catch {
-      setError("Could not open the recorder")
-      setBusy(false)
-    }
-  }
-
-  const finish = async () => {
-    setBusy(true)
-    const r = await chrome.runtime.sendMessage({ type: "STOP_RECORDING" }).catch(() => null)
-    if (r?.success) setState({ isRecording: false, session: r.session })
-    else setError(r?.error ?? "Could not stop the recording")
+    const r = await chrome.runtime.sendMessage({ type, ...extra }).catch(() => null)
     setBusy(false)
+    if (!r?.ok) setError(r?.error ?? "Something went wrong")
+    return r
   }
 
-  const goToRecorder = async () => {
-    const [rec] = await chrome.tabs.query({ url: chrome.runtime.getURL("tabs/recorder.html") + "*" })
-    if (rec?.id) {
-      await chrome.tabs.update(rec.id, { active: true })
-      if (rec.windowId) await chrome.windows.update(rec.windowId, { focused: true })
-    }
-    window.close()
+  // Countdown, then this tab is recorded. The popup closes so you can get going.
+  const start = async () => {
+    const r = await send("BEGIN_RECORDING", { tabId: tab?.id })
+    if (r?.ok) window.close()
+  }
+  const finish = async () => {
+    const r = await send("FINISH_RECORDING")
+    if (r?.ok) window.close()
+  }
+  const togglePause = async () => {
+    const r = await send(paused ? "RESUME_RECORDING" : "PAUSE_RECORDING")
+    if (r?.state) setState(r.state)
+    if (paused && r?.ok) window.close()
+  }
+  const discard = async () => {
+    await send("DISCARD_RECORDING")
+    setState({ isRecording: false, session: null })
+    setConfirmDiscard(false)
   }
 
-  const elapsed = state.session?.startTime ? Math.max(0, Math.floor((now - state.session.startTime) / 1000)) : 0
+  const paused = Boolean(state.session?.pausedAt)
+  const s = state.session
+  const elapsedMs = s?.startTime ? now - s.startTime - (s.pausedMs ?? 0) - (s.pausedAt ? now - s.pausedAt : 0) : 0
+  const elapsed = Math.max(0, Math.floor(elapsedMs / 1000))
   const events = state.session?.logs?.length ?? 0
 
   return (
@@ -176,26 +182,55 @@ function SignedIn({ auth, onSignOut }: { auth: StoredAuth; onSignOut: () => void
       <div className="px-4 pb-4 pt-2">
         {state.isRecording ? (
           <>
-            <div className="rounded-xl border border-[#f87171]/25 bg-[#f87171]/[0.06] p-4">
+            <div className={`rounded-xl border p-4 ${paused ? "border-[#f59e0b]/30 bg-[#f59e0b]/[0.06]" : "border-[#f87171]/25 bg-[#f87171]/[0.06]"}`}>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm font-medium text-white">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#f87171] opacity-60" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
-                  </span>
-                  Recording
+                  {paused ? (
+                    <span className="flex h-2.5 w-2.5 items-center justify-center gap-[2px]"><span className="h-2.5 w-[3px] rounded-sm bg-[#f59e0b]" /><span className="h-2.5 w-[3px] rounded-sm bg-[#f59e0b]" /></span>
+                  ) : (
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#f87171] opacity-60" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
+                    </span>
+                  )}
+                  {paused ? "Paused" : "Recording"}
                 </span>
                 <span className="font-mono text-lg tabular-nums text-white">{fmt(elapsed)}</span>
               </div>
               <p className="mt-2 text-xs text-[#a1a1aa]">
-                {events} event{events === 1 ? "" : "s"} captured{state.session?.metadata?.url ? ` on ${safeHost(state.session.metadata.url)}` : ""}
+                {events} event{events === 1 ? "" : "s"} captured{s?.metadata?.url ? ` on ${safeHost(s.metadata.url)}` : ""}
+                {paused ? ". Nothing is recorded while paused." : ""}
               </p>
             </div>
-            <button onClick={finish} disabled={busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#ef4444] py-2.5 text-sm font-medium text-white transition hover:bg-[#dc2626] disabled:opacity-60">
-              <span className="h-3 w-3 rounded-[3px] bg-white" />
-              {busy ? "Finishing…" : "Finish and create report"}
-            </button>
-            <button onClick={goToRecorder} className="mt-2 w-full rounded-xl py-2 text-xs text-[#8b8b93] hover:text-white">Go to the recorder tab</button>
+
+            {error && <p className="mt-3 rounded-lg bg-[#f87171]/10 px-3 py-2 text-xs text-[#f87171]">{error}</p>}
+
+            {confirmDiscard ? (
+              <div className="mt-3 rounded-xl border border-[#26262b] bg-[#16161a] p-3">
+                <p className="text-[13px] text-white">Throw away this recording?</p>
+                <p className="mt-0.5 text-xs text-[#8b8b93]">Nothing is saved or uploaded.</p>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => setConfirmDiscard(false)} className="flex-1 rounded-lg border border-[#2a2a2f] py-2 text-xs text-[#d4d4d8] hover:bg-[#1f1f24]">Keep recording</button>
+                  <button onClick={discard} disabled={busy} className="flex-1 rounded-lg bg-[#ef4444] py-2 text-xs font-medium text-white hover:bg-[#dc2626]">Discard</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <button onClick={finish} disabled={busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#3b82f6] py-2.5 text-sm font-medium text-white transition hover:bg-[#2563eb] disabled:opacity-60">
+                  <span className="h-3 w-3 rounded-[3px] bg-white" />
+                  {busy ? "Saving…" : "Finish and open report"}
+                </button>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button onClick={togglePause} disabled={busy} className="rounded-xl border border-[#2a2a2f] py-2 text-[13px] text-[#d4d4d8] hover:bg-[#1f1f24]">
+                    {paused ? "Resume" : "Pause"}
+                  </button>
+                  <button onClick={() => setConfirmDiscard(true)} disabled={busy} className="rounded-xl border border-[#2a2a2f] py-2 text-[13px] text-[#f87171] hover:bg-[#1f1f24]">
+                    Discard
+                  </button>
+                </div>
+              </>
+            )}
+            <p className="mt-2.5 text-center text-[11px] text-[#5c5c64]">Shortcuts: Alt+Shift+R finish · Alt+Shift+P pause</p>
           </>
         ) : (
           <>
@@ -231,7 +266,7 @@ function SignedIn({ auth, onSignOut }: { auth: StoredAuth; onSignOut: () => void
               <span className="h-2.5 w-2.5 rounded-full bg-white" />
               {busy ? "Opening…" : "Start recording"}
             </button>
-            <p className="mt-2.5 text-center text-[11.5px] leading-4 text-[#5c5c64]">Records your screen, clicks, console and network. Passwords and keys are hidden.</p>
+            <p className="mt-2.5 text-center text-[11.5px] leading-4 text-[#5c5c64]">Records this tab, clicks, console and network. Passwords and keys are hidden. Shortcut: Alt+Shift+R</p>
           </>
         )}
       </div>

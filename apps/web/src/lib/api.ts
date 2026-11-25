@@ -76,6 +76,9 @@ export interface BugReport {
   aiSuggestions: string[]
   browserInfo?: {
     recordingUrl?: string
+    mediaPending?: boolean
+    mediaPendingSince?: number
+    mediaError?: string
     screenshotUrls?: string[]
     duration?: number
     affectedArea?: string

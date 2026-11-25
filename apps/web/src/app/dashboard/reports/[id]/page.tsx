@@ -155,6 +155,29 @@ export default function ReportPage() {
     }
   }, [pending, id, descDirty])
 
+  // The extension opens this page right after you stop; the video arrives a few seconds later.
+  const mediaPending = Boolean(report?.browserInfo?.mediaPending) && Date.now() - (report?.browserInfo?.mediaPendingSince ?? 0) < 10 * 60 * 1000
+  useEffect(() => {
+    if (!mediaPending) return
+    let stop = false
+    const poll = async () => {
+      if (stop) return
+      const fresh = await getBugReport(id).catch(() => null)
+      if (fresh && !fresh.browserInfo?.mediaPending) {
+        setReport(fresh)
+        setActivityKey((k) => k + 1)
+        if (fresh.browserInfo?.mediaError) toast.error("The video could not be uploaded. The steps and logs are saved.")
+        return
+      }
+      setTimeout(poll, 2500)
+    }
+    const t = setTimeout(poll, 2500)
+    return () => {
+      stop = true
+      clearTimeout(t)
+    }
+  }, [mediaPending, id])
+
   useEffect(() => {
     if (!report || autoRetried.current || report.aiStatus !== "failed" || !canEdit) return
     autoRetried.current = true
@@ -419,7 +442,17 @@ export default function ReportPage() {
           </div>
 
           {/* Video */}
-          {info.recordingUrl ? (
+          {mediaPending ? (
+            <div className="mt-5 grid aspect-video w-full place-items-center rounded-xl border border-dashed border-border bg-background-secondary">
+              <div className="text-center">
+                <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-primary" />
+                <p className="text-sm font-medium text-foreground">Uploading your recording…</p>
+                <p className="mt-1 text-xs text-foreground-muted">The video shows up here in a few seconds. Then the AI writes the report.</p>
+              </div>
+            </div>
+          ) : info.mediaPending ? (
+            <p className="mt-5 rounded-xl border border-border bg-background-secondary px-4 py-3 text-sm text-foreground-muted">The recording did not finish uploading. The steps and logs below are saved.</p>
+          ) : info.recordingUrl ? (
             <div className="mt-5"><SyncedPlayer src={info.recordingUrl} /></div>
           ) : shots[0] ? (
             // eslint-disable-next-line @next/next/no-img-element
