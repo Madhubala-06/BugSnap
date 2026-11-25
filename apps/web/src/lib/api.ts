@@ -107,6 +107,7 @@ export interface BugReport {
   project?: { id: string; name: string; color: string } | null
   projectId?: string | null
   links?: ReportLink[]
+  verifications?: Verification[]
   shareToken?: string | null
   errorSignature?: string | null
   aiStatus?: string | null
@@ -453,6 +454,17 @@ export async function configureWidget(id: string, body: { enabled?: boolean; con
 
 // ---------- integrations ----------
 export type Provider = "github" | "linear" | "jira" | "slack"
+
+export interface Verification {
+  id: string
+  status: "passed" | "failed" | "error"
+  repo?: string | null
+  prNumber?: number | null
+  prUrl?: string | null
+  runUrl?: string | null
+  details?: string | null
+  createdAt: string
+}
 
 export interface ReportLink {
   id: string

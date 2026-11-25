@@ -78,6 +78,8 @@ function Integrations() {
         </div>
       )}
 
+      <VerifyInCi />
+
       {dialog && dialog !== "github" && (
         <ConnectDialog
           provider={dialog}
@@ -326,5 +328,65 @@ function ConnectDialog({ provider, onClose, onDone }: { provider: Exclude<Provid
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+const WORKFLOW = `name: BugSnap verify fix
+on:
+  pull_request:
+    types: [opened, synchronize, edited, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Start your app here (or use a preview deployment URL as base-url), for example:
+      # - run: npm ci && npm run build && (npm start &) && npx wait-on http://localhost:3000
+      - uses: Madhubala-06/BugSnap/action@local-changes
+        with:
+          api-key: \${{ secrets.BUGSNAP_API_KEY }}
+          base-url: http://localhost:3000
+`
+
+function VerifyInCi() {
+  const [copied, setCopied] = useState(false)
+  return (
+    <section className="mt-8 rounded-xl border border-border p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 font-medium">
+            <GithubMark className="h-4 w-4" /> Verify fixes in CI
+            <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">GitHub Actions</span>
+          </p>
+          <p className="mt-1 max-w-xl text-sm text-foreground-secondary">
+            Write <span className="font-mono text-[13px] text-foreground">Fixes BUG-12</span> in a pull request. BugSnap replays the recorded steps against that build and
+            tells you if the bug is really gone: a comment on the PR, a badge on the bug, and the bug moves to <b>Fix ready</b>.
+          </p>
+        </div>
+      </div>
+      <ol className="mt-4 space-y-1.5 text-sm text-foreground-secondary">
+        <li>1. Create an API key on the <a href="/dashboard/settings#agents" className="text-primary hover:underline">AI agents</a> page.</li>
+        <li>2. In your GitHub repo, add it as a secret named <span className="font-mono text-[13px] text-foreground">BUGSNAP_API_KEY</span> (Settings → Secrets and variables → Actions).</li>
+        <li>3. Add this file as <span className="font-mono text-[13px] text-foreground">.github/workflows/bugsnap.yml</span> and set <span className="font-mono text-[13px] text-foreground">base-url</span> to where your app runs in CI.</li>
+      </ol>
+      <div className="relative mt-3">
+        <pre className="overflow-x-auto rounded-lg border border-border bg-background-secondary p-4 font-mono text-[12px] leading-5 text-foreground-secondary">{WORKFLOW}</pre>
+        <button
+          onClick={async () => {
+            await navigator.clipboard.writeText(WORKFLOW)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1500)
+          }}
+          className="absolute right-2 top-2 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground-secondary hover:text-foreground"
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </section>
   )
 }

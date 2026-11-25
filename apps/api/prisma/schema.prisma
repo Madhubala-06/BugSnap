@@ -214,6 +214,7 @@ model BugReport {
   comments  Comment[]
   activity  Activity[]
   links     ReportLink[]
+  verifications  Verification[]
 
   @@unique([workspaceId, number])
   @@index([workspaceId, assigneeId])
@@ -382,4 +383,22 @@ model ReportLink {
   @@unique([provider, externalId])
   @@index([reportId])
   @@map("report_links")
+}
+
+// A CI run of the bug's regression test against a pull request ("verify the fix").
+model Verification {
+  id        String    @id @default(cuid())
+  reportId  String    @map("report_id")
+  report    BugReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  status    String // passed | failed | error
+  repo      String?
+  prNumber  Int?      @map("pr_number")
+  prUrl     String?   @map("pr_url")
+  commitSha String?   @map("commit_sha")
+  runUrl    String?   @map("run_url")
+  details   String?
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([reportId, createdAt])
+  @@map("verifications")
 }

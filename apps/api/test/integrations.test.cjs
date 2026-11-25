@@ -72,3 +72,16 @@ test("issue body has steps, errors and a link back", () => {
   assert.match(md, /BUG-7 full report/)
   assert.match(md, /https:\/\/app\.test\/dashboard\/reports\/r1/)
 })
+
+test("bug references are found in PR text", () => {
+  const { bugRefs } = require("../dist/ci/ci.controller")
+  assert.deepEqual(bugRefs("Fixes BUG-12 and bug 7; see #BUG-12, bug_3"), [12, 7, 3])
+  assert.deepEqual(bugRefs("no refs here, debug-4 is not one"), [])
+})
+
+test("regression test can target another build", () => {
+  const { toPlaywrightTest } = require("../dist/reports/formats")
+  const spec = toPlaywrightTest({ id: "r", title: "t", severity: "LOW", status: "OPEN", createdAt: new Date(), browserInfo: { page: { url: "https://shop.test/cart?x=1" } } })
+  assert.match(spec, /process\.env\.BUGSNAP_BASE_URL/)
+  assert.match(spec, /page\.goto\(url\("https:\/\/shop\.test\/cart\?x=1"\)\)/)
+})

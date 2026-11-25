@@ -316,6 +316,23 @@ export default function ReportPage() {
                 aria-label="Bug title"
                 className="block w-full resize-none overflow-hidden rounded-md bg-transparent text-[22px] font-semibold leading-tight tracking-tight text-foreground outline-none hover:bg-background-secondary/60 focus:bg-background-secondary/60"
               />
+              {report.verifications?.[0] && (() => {
+                const v = report.verifications[0]
+                const ok = v.status === "passed"
+                return (
+                  <a
+                    href={v.runUrl || v.prUrl || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={v.details || undefined}
+                    className={`mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[12px] ${ok ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
+                  >
+                    {ok ? "✓ Fix verified" : v.status === "failed" ? "✗ Still reproduces" : "⚠ Test could not run"}
+                    {v.prNumber ? <span className="text-foreground-muted">on PR #{v.prNumber}{v.repo ? ` · ${v.repo}` : ""}</span> : null}
+                    <span className="text-foreground-muted">· {new Date(v.createdAt).toLocaleDateString()}</span>
+                  </a>
+                )
+              })()}
               {report.links && report.links.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {report.links.map((l) => {

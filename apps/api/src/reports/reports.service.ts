@@ -359,6 +359,7 @@ export class ReportsService {
         assignee: { select: { id: true, name: true, email: true } },
         project: { select: { id: true, name: true, color: true } },
         links: { orderBy: { createdAt: "asc" } },
+        verifications: { orderBy: { createdAt: "desc" }, take: 10 },
       },
     })
     if (!report) throw new NotFoundException("Report not found")

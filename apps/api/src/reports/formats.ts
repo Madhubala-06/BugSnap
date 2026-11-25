@@ -66,7 +66,7 @@ export function toPlaywrightTest(report: ReportLike): string {
     } else if (log.type === "NAVIGATION") {
       const url = String(log.data?.url ?? "")
       if (url && url !== lastUrl && url !== startUrl) {
-        lines.push(`  await page.waitForURL(${q(url.split("?")[0] + "**")})`)
+        lines.push(`  await page.waitForURL(url(${q(url.split("?")[0])}) + "**")`)
         lastUrl = url
       }
     } else if (log.level === "ERROR") {
@@ -78,6 +78,14 @@ export function toPlaywrightTest(report: ReportLike): string {
 
 // Reproduces: ${report.title.replace(/\n/g, " ")}
 // Recorded with BugSnap on ${new Date(report.createdAt).toISOString().slice(0, 10)}. This test fails while the bug exists.
+// Set BUGSNAP_BASE_URL (for example a preview deployment or http://localhost:3000) to run it against another build.
+const url = (recorded: string) => {
+  const base = process.env.BUGSNAP_BASE_URL
+  if (!base) return recorded
+  const u = new URL(recorded)
+  return new URL(u.pathname + u.search + u.hash, base).toString()
+}
+
 test(${q(report.title.slice(0, 100))}, async ({ page }) => {
   const pageErrors: string[] = []
   const failedRequests: string[] = []
@@ -89,7 +97,7 @@ test(${q(report.title.slice(0, 100))}, async ({ page }) => {
     if (response.status() >= 400) failedRequests.push(\`\${response.request().method()} \${response.url()} -> \${response.status()}\`)
   })
 
-${vp}  await page.goto(${q(startUrl)})
+${vp}  await page.goto(url(${q(startUrl)}))
 ${lines.join("\n") || "  // No clicks were recorded. Add the steps from the video here."}
   await page.waitForLoadState("networkidle")
 

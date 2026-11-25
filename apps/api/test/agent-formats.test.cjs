@@ -30,11 +30,11 @@ const report = {
 test("Playwright test replays steps with good locators and asserts no errors", () => {
   const spec = toPlaywrightTest(report)
   assert.match(spec, /import \{ test, expect \} from "@playwright\/test"/)
-  assert.match(spec, /await page\.goto\("https:\/\/shop\.test\/cart\?token=\[hidden\]"\)/)
+  assert.match(spec, /await page\.goto\(url\("https:\/\/shop\.test\/cart\?token=\[hidden\]"\)\)/)
   assert.match(spec, /page\.getByLabel\("Coupon"\)\.fill\(/)
   assert.match(spec, /page\.getByRole\("button", \{ name: "Pay now" \}\)\.click\(\)/)
   assert.match(spec, /page\.locator\("div\.card > span\.x"\)\.click\(\)/)
-  assert.match(spec, /waitForURL\("https:\/\/shop\.test\/thanks\*\*"\)/)
+  assert.match(spec, /waitForURL\(url\("https:\/\/shop\.test\/thanks"\) \+ "\*\*"\)/)
   assert.match(spec, /setViewportSize\(\{ width: 1280, height: 720 \}\)/)
   assert.match(spec, /expect\(pageErrors, "errors in the page"\)\.toEqual\(\[\]\)/)
   assert.doesNotMatch(spec, /SAVE10/)

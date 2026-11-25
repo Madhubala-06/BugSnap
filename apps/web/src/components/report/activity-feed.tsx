@@ -34,6 +34,10 @@ function describe(item: ActivityItem, memberName: (id?: unknown) => string): str
       return "created a share link"
     case "issue_created":
       return `created ${String(d.key ?? "an issue")} in ${d.provider === "github" ? "GitHub" : d.provider === "linear" ? "Linear" : "Jira"}`
+    case "verified":
+      return d.status === "passed"
+        ? `verified the fix in CI${d.prNumber ? ` on PR #${String(d.prNumber)}` : ""}: the bug no longer reproduces`
+        : `ran the regression test in CI${d.prNumber ? ` on PR #${String(d.prNumber)}` : ""}: ${d.status === "failed" ? "the bug still reproduces" : "the test could not run"}`
     case "sync_failed":
       return `could not update ${String(d.key ?? "the linked issue")} in ${d.provider === "github" ? "GitHub" : d.provider === "linear" ? "Linear" : "Jira"}: ${String(d.error ?? "")}`
     case "synced":

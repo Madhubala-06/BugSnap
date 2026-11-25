@@ -1,0 +1,43 @@
+name: BugSnap verify fix
+description: Runs the BugSnap regression test for every bug a pull request mentions (for example "Fixes BUG-12") and reports the result to BugSnap and the pull request.
+author: BugSnap
+branding:
+  icon: check-circle
+  color: blue
+inputs:
+  api-key:
+    description: A BugSnap API key (Dashboard > AI agents). Store it as a repository secret.
+    required: true
+  base-url:
+    description: Where the app under test runs, for example a preview deployment URL or http://localhost:3000. Empty means the URL that was recorded.
+    required: false
+    default: ""
+  api-url:
+    description: BugSnap API address.
+    required: false
+    default: https://bugsnap-api.vercel.app
+  github-token:
+    description: Token used to comment on the pull request.
+    required: false
+    default: ${{ github.token }}
+  fail-on-bug:
+    description: Fail this check when a bug still reproduces.
+    required: false
+    default: "true"
+outputs:
+  result:
+    description: passed, failed, or none (no bugs mentioned)
+    value: ${{ steps.verify.outputs.result }}
+runs:
+  using: composite
+  steps:
+    - name: Run BugSnap regression tests
+      id: verify
+      shell: bash
+      env:
+        BUGSNAP_API_KEY: ${{ inputs.api-key }}
+        BUGSNAP_API_URL: ${{ inputs.api-url }}
+        BUGSNAP_BASE_URL: ${{ inputs.base-url }}
+        BUGSNAP_FAIL_ON_BUG: ${{ inputs.fail-on-bug }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: node "${{ github.action_path }}/verify.mjs"
