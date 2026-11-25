@@ -85,6 +85,8 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
+        <PlanUsage isAdmin={isAdmin} />
+
         <Card>
           <CardHeader>
             <CardTitle>Your profile</CardTitle>
@@ -271,7 +273,176 @@ export default function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <YourData email={me?.email ?? ""} />
       </div>
     </div>
+  )
+}
+
+/** Download everything we hold about you, or delete your account. */
+function YourData({ email }: { email: string }) {
+  const [exporting, setExporting] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [typed, setTyped] = useState("")
+  const [deleting, setDeleting] = useState(false)
+
+  const exportData = async () => {
+    setExporting(true)
+    try {
+      const res = await authFetch(`${API_URL}/account/export`)
+      if (!res.ok) throw new Error()
+      const url = URL.createObjectURL(await res.blob())
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "bugsnap-my-data.json"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error("Could not export your data")
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const deleteAccount = async () => {
+    setDeleting(true)
+    const res = await authFetch(`${API_URL}/account`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmEmail: typed }) })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      toast.error(typeof data.message === "string" ? data.message : "Could not delete your account")
+      setDeleting(false)
+      return
+    }
+    localStorage.removeItem("bugsnap_token")
+    window.location.href = "/?account=deleted"
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Your data</CardTitle>
+        <CardDescription>Download a copy of everything BugSnap holds about you, or delete your account.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button variant="outline" onClick={exportData} disabled={exporting} className="gap-2">
+          {exporting && <Loader2 className="h-4 w-4 animate-spin" />}Export my data
+        </Button>
+        <div className="rounded-lg border border-red-500/25 bg-red-500/[0.04] p-4">
+          <p className="text-sm font-medium text-foreground">Delete account</p>
+          <p className="mt-1 text-sm text-foreground-muted">
+            Workspaces where you are the only member are deleted with all their bugs, videos and screenshots. In shared workspaces your bug reports
+            stay for the team (without your name). This cannot be undone.
+          </p>
+          {!confirming ? (
+            <Button variant="outline" onClick={() => setConfirming(true)} className="mt-3 gap-2 border-red-500/40 text-red-400 hover:bg-red-500/10">
+              <Trash2 className="h-4 w-4" /> Delete my account
+            </Button>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm text-foreground-secondary">Type <span className="font-mono text-foreground">{email}</span> to confirm.</p>
+              <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={email} autoFocus />
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { setConfirming(false); setTyped("") }}>Cancel</Button>
+                <Button onClick={deleteAccount} disabled={deleting || typed.trim().toLowerCase() !== email.toLowerCase()} className="gap-2 bg-red-600 text-white hover:bg-red-700">
+                  {deleting && <Loader2 className="h-4 w-4 animate-spin" />}Delete forever
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+type Usage = {
+  plan: { id: string; name: string; videoDays: number | null }
+  proInterest: boolean
+  ownAiKey: boolean
+  reports: { used: number; limit: number | null }
+  members: { used: number; pending: number; limit: number | null }
+  ai: { used: number; limit: number | null }
+  videos: { count: number; keptDays: number | null }
+  resetsOn: string
+}
+
+function Meter({ label, used, limit, note }: { label: string; used: number; limit: number | null; note?: string }) {
+  const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between text-sm">
+        <span className="text-foreground-secondary">{label}</span>
+        <span className="font-mono text-[13px] text-foreground">
+          {used}
+          {limit != null ? ` / ${limit}` : ""}
+        </span>
+      </div>
+      {limit != null && (
+        <div className="h-1.5 overflow-hidden rounded-full bg-background-secondary">
+          <div className={`h-full rounded-full ${pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      {note && <p className="mt-1 text-xs text-foreground-muted">{note}</p>}
+    </div>
+  )
+}
+
+/** What this workspace's plan allows and how much is used this month. */
+function PlanUsage({ isAdmin }: { isAdmin: boolean }) {
+  const [u, setU] = useState<Usage | null>(null)
+  const [joining, setJoining] = useState(false)
+  useEffect(() => {
+    authFetch(`${API_URL}/workspace/usage`).then(async (r) => r.ok && setU(await r.json())).catch(() => undefined)
+  }, [])
+  if (!u) return null
+  const resets = new Date(u.resetsOn).toLocaleDateString(undefined, { day: "numeric", month: "short" })
+  return (
+    <Card id="plan">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          Plan and usage
+          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{u.plan.name}</span>
+        </CardTitle>
+        <CardDescription>Monthly limits reset on {resets}.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Meter label="Bug reports this month" used={u.reports.used} limit={u.reports.limit} />
+          <Meter label="People" used={u.members.used + u.members.pending} limit={u.members.limit} note={u.members.pending ? `${u.members.pending} invited` : undefined} />
+          <Meter label="AI write-ups" used={u.ai.used} limit={u.ownAiKey ? null : u.ai.limit} note={u.ownAiKey ? "Your own Gemini key: no BugSnap limit" : undefined} />
+        </div>
+        <p className="text-xs text-foreground-muted">
+          Videos are kept {u.plan.videoDays ?? "forever"}
+          {u.plan.videoDays ? " days" : ""}. After that the steps, logs and screenshots stay; only the video is removed.
+        </p>
+        {u.plan.id === "free" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/25 bg-primary/[0.05] p-4">
+            <div className="text-sm">
+              <p className="font-medium text-foreground">BugSnap Pro</p>
+              <p className="text-foreground-muted">Unlimited bug reports, 50 people, 1,000 AI write-ups a month, videos kept a year.</p>
+            </div>
+            {u.proInterest ? (
+              <span className="text-sm text-emerald-500">You are on the waitlist. We will email you.</span>
+            ) : (
+              <Button
+                disabled={!isAdmin || joining}
+                onClick={async () => {
+                  setJoining(true)
+                  const r = await authFetch(`${API_URL}/workspace/pro-interest`, { method: "POST" })
+                  if (r.ok) {
+                    setU({ ...u, proInterest: true })
+                    toast.success("You are on the Pro waitlist")
+                  } else toast.error("Could not join the waitlist")
+                  setJoining(false)
+                }}
+              >
+                Join the Pro waitlist
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

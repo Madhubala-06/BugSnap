@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Header, HttpCode } from "@nestjs/common"
+import { RateLimit } from "../ops/rate-limit"
 import { toFixPrompt, toPlaywrightTest } from "./formats"
 import { ReportsService, type QuickReportInput } from "./reports.service"
 import { Severity, ReportStatus } from "@prisma/client"
@@ -11,6 +12,7 @@ const SEVERITIES = Object.values(Severity)
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 
+  @RateLimit({ name: "report", by: "user", limit: 60, windowSec: 3600 }, { name: "report", by: "workspace", limit: 600, windowSec: 86400 })
   @Post("quick")
   createQuick(@Auth() auth: AuthContext, @Body() body: QuickReportInput) {
     return this.reports.createQuick(auth, body ?? {})
@@ -61,6 +63,7 @@ export class ReportsController {
   }
 
   @MinRole("member")
+  @RateLimit({ name: "media", by: "user", limit: 120, windowSec: 3600 })
   @MinRole("member")
   @Post(":id/media")
   @HttpCode(200)
@@ -68,6 +71,7 @@ export class ReportsController {
     return this.reports.attachMedia(auth.workspaceId, id, body ?? {})
   }
 
+  @RateLimit({ name: "ai", by: "workspace", limit: 40, windowSec: 3600 })
   @Post(":id/analyze")
   analyze(@Auth() auth: AuthContext, @Param("id") id: string) {
     return this.reports.analyzeAgain(auth.workspaceId, id)

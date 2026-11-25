@@ -174,6 +174,7 @@ export class AuthService {
       name: user.name,
       notifyEmail: user.notifyEmail,
       role: auth.role,
+      isOps: (process.env.OPS_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).includes(user.email.toLowerCase()),
       workspace: { id: auth.workspaceId, name: current?.workspace.name ?? "Workspace", members: current?.workspace._count.members ?? 1 },
       workspaces: memberships.map((m) => ({ id: m.workspace.id, name: m.workspace.name, role: m.role, members: m.workspace._count.members })),
     }

@@ -583,4 +583,22 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command === "save-replay") await saveReplay(tab?.id)
 })
 
+
+// ---------- report the extension's own crashes to BugSnap's error log ----------
+const reportedErrors = new Set<string>()
+function reportOwnError(message: string, stack?: string) {
+  if (!message || reportedErrors.has(message) || reportedErrors.size > 20) return
+  reportedErrors.add(message)
+  fetch(`${DEFAULT_API_URL}/ops/client-errors`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source: "extension", message: `[v${chrome.runtime.getManifest().version}] ${message}`.slice(0, 1000), stack: stack?.slice(0, 6000), url: "background" }),
+  }).catch(() => undefined)
+}
+self.addEventListener("error", (e) => reportOwnError((e as ErrorEvent).message, (e as ErrorEvent).error?.stack))
+self.addEventListener("unhandledrejection", (e) => {
+  const r = (e as PromiseRejectionEvent).reason
+  reportOwnError(r instanceof Error ? `${r.name}: ${r.message}` : String(r), r instanceof Error ? r.stack : undefined)
+})
+
 export {}

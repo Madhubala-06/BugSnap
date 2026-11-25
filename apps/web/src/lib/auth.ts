@@ -10,6 +10,8 @@ export interface Me {
   name: string
   role: Role
   notifyEmail?: boolean
+  /** Part of the BugSnap team (sees the Errors page). */
+  isOps?: boolean
   workspace: { id: string; name: string; members?: number }
   workspaces?: { id: string; name: string; role: Role; members: number }[]
 }

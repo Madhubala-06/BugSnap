@@ -19,5 +19,11 @@
   ],
   "regions": [
     "sin1"
+  ],
+  "crons": [
+    {
+      "path": "/ops/cron/daily",
+      "schedule": "0 3 * * *"
+    }
   ]
 }

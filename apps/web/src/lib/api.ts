@@ -79,6 +79,7 @@ export interface BugReport {
     mediaPending?: boolean
     mediaPendingSince?: number
     mediaError?: string
+    recordingExpiredAt?: string
     screenshotUrls?: string[]
     duration?: number
     affectedArea?: string

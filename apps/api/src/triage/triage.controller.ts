@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post } from "@nestjs/common"
+import { RateLimit } from "../ops/rate-limit"
 import { PrismaService } from "../prisma/prisma.service"
 import { Auth, MinRole, type AuthContext } from "../auth/public.decorator"
 import { Mailer } from "../auth/mailer"
@@ -122,6 +123,7 @@ export class TriageController {
     ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
   }
 
+  @RateLimit({ name: "comment", by: "user", limit: 120, windowSec: 3600 })
   @Post("reports/:id/comments")
   async comment(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: { body?: string }) {
     await this.ownReport(auth, id)

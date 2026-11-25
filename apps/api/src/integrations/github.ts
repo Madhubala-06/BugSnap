@@ -90,3 +90,50 @@ export function verifyGithubSignature(raw: Buffer | undefined, header: string | 
   const b = Buffer.from(header)
   return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
+
+// ---------- code changes (AI fix pull requests) ----------
+
+export async function repoInfo(installationId: string, repo: string) {
+  const token = await installationToken(installationId)
+  const r = await gh<{ default_branch: string; private: boolean }>(`/repos/${repo}`, { token })
+  return { defaultBranch: r.default_branch, private: r.private }
+}
+
+export async function listFiles(installationId: string, repo: string, branch: string) {
+  const token = await installationToken(installationId)
+  const ref = await gh<{ object: { sha: string } }>(`/repos/${repo}/git/ref/heads/${encodeURIComponent(branch)}`, { token })
+  const tree = await gh<{ tree: { path: string; type: string; size?: number }[]; truncated: boolean }>(`/repos/${repo}/git/trees/${ref.object.sha}?recursive=1`, { token })
+  return { headSha: ref.object.sha, files: tree.tree.filter((t) => t.type === "blob").map((t) => ({ path: t.path, size: t.size ?? 0 })) }
+}
+
+export async function readFile(installationId: string, repo: string, path: string, ref: string) {
+  const token = await installationToken(installationId)
+  const r = await gh<{ content: string; encoding: string; sha: string }>(`/repos/${repo}/contents/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(ref)}`, { token })
+  return { text: Buffer.from(r.content, (r.encoding as BufferEncoding) || "base64").toString("utf8"), sha: r.sha }
+}
+
+export async function createBranch(installationId: string, repo: string, name: string, fromSha: string) {
+  const token = await installationToken(installationId)
+  await gh(`/repos/${repo}/git/refs`, { method: "POST", token, body: JSON.stringify({ ref: `refs/heads/${name}`, sha: fromSha }) })
+}
+
+export async function writeFile(installationId: string, repo: string, branch: string, path: string, text: string, sha: string, message: string) {
+  const token = await installationToken(installationId)
+  await gh(`/repos/${repo}/contents/${path.split("/").map(encodeURIComponent).join("/")}`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify({ message, content: Buffer.from(text, "utf8").toString("base64"), sha, branch }),
+  })
+}
+
+export async function openPullRequest(installationId: string, repo: string, head: string, base: string, title: string, body: string) {
+  const token = await installationToken(installationId)
+  const r = await gh<{ number: number; html_url: string }>(`/repos/${repo}/pulls`, { method: "POST", token, body: JSON.stringify({ title, head, base, body, draft: true }) })
+  return { number: r.number, url: r.html_url }
+}
+
+/** Which permissions the installed app has (contents/pull_requests are needed for fix PRs). */
+export async function installationPermissions(installationId: string) {
+  const r = await gh<{ permissions: Record<string, string> }>(`/app/installations/${installationId}`, { app: true })
+  return r.permissions ?? {}
+}

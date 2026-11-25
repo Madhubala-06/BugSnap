@@ -1,4 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, GoneException, HttpCode, NotFoundException, Param, Patch, Post } from "@nestjs/common"
+import { assertCanAddMembers } from "../plans/plans"
+import { RateLimit } from "../ops/rate-limit"
 import { waitUntil } from "@vercel/functions"
 import { PrismaService } from "../prisma/prisma.service"
 import { Mailer } from "../auth/mailer"
@@ -127,6 +129,7 @@ export class TeamsController {
 
   // ---------- invites ----------
 
+  @RateLimit({ name: "invite", by: "workspace", limit: 50, windowSec: 86400 })
   @Post("workspace/invites")
   @MinRole("admin")
   async invite(@Auth() auth: AuthContext, @Body() body: { emails?: unknown; role?: string }) {
@@ -134,6 +137,7 @@ export class TeamsController {
     if (role === "owner" && auth.role !== "owner") throw new ForbiddenException("Only owners can invite owners")
     const raw = Array.isArray(body?.emails) ? body.emails : typeof body?.emails === "string" ? body.emails.split(/[\s,;]+/) : []
     const emails = [...new Set(raw.map(normalizeEmail).filter((e): e is string => Boolean(e)))].slice(0, 20)
+    await assertCanAddMembers(this.prisma, auth.workspaceId, emails.length)
     if (!emails.length) throw new BadRequestException("Enter at least one valid email")
 
     const [count, ws, inviter] = await Promise.all([

@@ -1,4 +1,5 @@
-import { Controller, Get } from "@nestjs/common"
+import { Controller, Get, HttpCode, Res } from "@nestjs/common"
+import type { Response } from "express"
 import { PrismaService } from "./prisma/prisma.service"
 import { Public } from "./auth/public.decorator"
 
@@ -6,22 +7,18 @@ import { Public } from "./auth/public.decorator"
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Uptime checks: 200 when the database answers, 503 when it does not. */
   @Public()
-  @Get()
-  async getHealth() {
+  @Get(["", "health"])
+  @HttpCode(200)
+  async getHealth(@Res({ passthrough: true }) res: Response) {
+    const started = Date.now()
     try {
       await this.prisma.$queryRaw`SELECT 1`
-      return {
-        status: "ok",
-        database: "connected",
-        timestamp: new Date().toISOString(),
-      }
+      return { status: "ok", database: "connected", dbMs: Date.now() - started, timestamp: new Date().toISOString() }
     } catch {
-      return {
-        status: "error",
-        database: "disconnected",
-        timestamp: new Date().toISOString(),
-      }
+      res.status(503)
+      return { status: "error", database: "disconnected", timestamp: new Date().toISOString() }
     }
   }
 }

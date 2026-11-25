@@ -1,0 +1,31 @@
+name: CI
+on:
+  push:
+    branches: [main, local-changes]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      # The lockfile may lag behind new packages; run `pnpm install` locally and commit it to make this frozen.
+      - run: pnpm install --no-frozen-lockfile
+      - name: API build and tests
+        working-directory: apps/api
+        run: npx prisma generate && npx tsc --noEmit -p . && npm test
+      - name: Web typecheck
+        working-directory: apps/web
+        run: npx tsc --noEmit -p .
+      - name: Extension typecheck
+        working-directory: apps/extension
+        run: npx tsc --noEmit -p .
+      - name: Action syntax
+        run: node --check action/verify.mjs

@@ -38,7 +38,7 @@ import {
 import { reportToMarkdown, downloadText } from "@/lib/export"
 import { useCrumbs } from "@/components/shell/workspace-data"
 import { useMe } from "@/components/auth-gate"
-import { can } from "@/lib/auth"
+import { API_URL, authFetch, can } from "@/lib/auth"
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, MenuHint } from "@/components/kit/menu"
 import { Dialog, DialogContent } from "@/components/kit/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger, Count } from "@/components/kit/tabs"
@@ -83,6 +83,7 @@ export default function ReportPage() {
   const [activityKey, setActivityKey] = useState(0)
   const [tools, setTools] = useState<IntegrationsState | null>(null)
   const [creating, setCreating] = useState<Provider | null>(null)
+  const [fixing, setFixing] = useState(false)
   const autoRetried = useRef(false)
   const me = useMe()
   const canEdit = can(me, "member")
@@ -243,6 +244,30 @@ export default function ReportPage() {
     toast.success(message)
   }
 
+  const openFixPr = async () => {
+    if (!report) return
+    setFixing(true)
+    const t = toast.loading("The AI is reading the code and writing a fix. This takes up to a minute…")
+    try {
+      const res = await authFetch(`${API_URL}/reports/${report.id}/ai-fix`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(typeof data.message === "string" ? data.message : "Could not open a fix pull request")
+      toast.success(
+        <span>
+          Draft PR opened: <a className="underline" href={data.url} target="_blank" rel="noreferrer">{data.repo}#{data.number}</a>
+          {data.files?.length ? ` (${data.files.join(", ")})` : ""}
+        </span>,
+        { id: t, duration: 10000 }
+      )
+      load()
+      setActivityKey((k) => k + 1)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not open a fix pull request", { id: t, duration: 10000 })
+    } finally {
+      setFixing(false)
+    }
+  }
+
   const fixWithAi = async () => {
     const t = toast.loading("Preparing the prompt…")
     try {
@@ -382,11 +407,32 @@ export default function ReportPage() {
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5">
-              <Tip label="Copies a prompt with the exact errors, timeline and a test">
-                <button onClick={fixWithAi} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,.15)] hover:bg-primary-hover">
-                  <Bot className="h-4 w-4" />Fix with AI
-                </button>
-              </Tip>
+              <Menu>
+                <MenuTrigger
+                  disabled={fixing}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-medium text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,.15)] outline-none hover:bg-primary-hover disabled:opacity-70"
+                >
+                  {fixing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                  {fixing ? "Writing a fix…" : "Fix with AI"}
+                  <ChevronDown className="h-3.5 w-3.5 opacity-80" />
+                </MenuTrigger>
+                <MenuContent align="end" className="w-72">
+                  <MenuItem disabled={!canEdit || !tools?.connected.github} onSelect={openFixPr}>
+                    <GithubMark className="h-4 w-4" />
+                    <span className="flex flex-col">
+                      <span>Open a fix pull request</span>
+                      <span className="text-[11.5px] text-foreground-muted">{tools?.connected.github ? "AI writes a small fix as a draft PR" : "Connect GitHub in Integrations first"}</span>
+                    </span>
+                  </MenuItem>
+                  <MenuItem onSelect={fixWithAi}>
+                    <Bot className="h-4 w-4" />
+                    <span className="flex flex-col">
+                      <span>Copy prompt for your coding agent</span>
+                      <span className="text-[11.5px] text-foreground-muted">Errors, timeline and a test, for Claude Code, Cursor…</span>
+                    </span>
+                  </MenuItem>
+                </MenuContent>
+              </Menu>
               <Menu>
                 <MenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium outline-none hover:bg-background-tertiary">
                   <Github className="h-4 w-4" />Create issue<ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
@@ -469,6 +515,8 @@ export default function ReportPage() {
             </div>
           ) : info.mediaPending ? (
             <p className="mt-5 rounded-xl border border-border bg-background-secondary px-4 py-3 text-sm text-foreground-muted">The recording did not finish uploading. The steps and logs below are saved.</p>
+          ) : info.recordingExpiredAt && !info.recordingUrl ? (
+            <p className="mt-5 rounded-xl border border-border bg-background-secondary px-4 py-3 text-sm text-foreground-muted">The video was removed after the plan&apos;s storage period. The steps, logs and screenshots are kept.</p>
           ) : info.recordingUrl ? (
             <div className="mt-5"><SyncedPlayer src={info.recordingUrl} /></div>
           ) : shots[0] ? (

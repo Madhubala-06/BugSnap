@@ -1,0 +1,17 @@
+name: Uptime
+# Every 15 minutes: is the live API (and its database) and the website up?
+# A failed run makes GitHub email the repo owner.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: API and database
+        run: curl -fsS --retry 2 --retry-delay 10 --max-time 20 https://bugsnap-api.vercel.app/health
+      - name: Website
+        run: curl -fsS --retry 2 --retry-delay 10 --max-time 20 -o /dev/null https://bugsnap-web.vercel.app/login

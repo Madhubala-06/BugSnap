@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Headers, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res } from "@nestjs/common"
+import { RateLimit } from "../ops/rate-limit"
 import type { Request, Response } from "express"
 import { PrismaService } from "../prisma/prisma.service"
 import { Auth, MinRole, Public, type AuthContext } from "../auth/public.decorator"
@@ -85,6 +86,7 @@ export class IntegrationsController {
 
   // ---------- issues for a report ----------
 
+  @RateLimit({ name: "issue", by: "user", limit: 60, windowSec: 3600 })
   @Post("reports/:id/issues")
   @MinRole("member")
   createIssue(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: { provider?: string; target?: string }) {

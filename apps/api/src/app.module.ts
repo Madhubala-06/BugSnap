@@ -17,6 +17,10 @@ import { TriageModule } from "./triage/triage.module"
 import { TeamsModule } from "./teams/teams.module"
 import { WidgetModule } from "./widget/widget.module"
 import { IntegrationsModule } from "./integrations/integrations.module"
+import { OpsModule } from "./ops/ops.module"
+import { AccountModule } from "./account/account.module"
+import { PlansModule } from "./plans/plans.module"
+import { AiFixModule } from "./ai-fix/ai-fix.module"
 
 @Module({
   imports: [
@@ -40,6 +44,10 @@ import { IntegrationsModule } from "./integrations/integrations.module"
     TeamsModule,
     WidgetModule,
     IntegrationsModule,
+    OpsModule,
+    AccountModule,
+    PlansModule,
+    AiFixModule,
   ],
   controllers: [HealthController],
 })

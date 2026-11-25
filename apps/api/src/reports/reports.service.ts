@@ -7,6 +7,7 @@ import { cleanLabels, hostOf, logActivity, PRIORITIES } from "../triage/activity
 import { Mailer } from "../auth/mailer"
 import { notifyAssigned } from "../teams/notify"
 import { IntegrationsService } from "../integrations/integrations.service"
+import { assertCanCreateReport } from "../plans/plans"
 import { del } from "@vercel/blob"
 import { waitUntil } from "@vercel/functions"
 import { errorSignature, fallbackSummary, fallbackTitle, isBlobUrl, isOwnUpload, summarizeLogs, type CapturedLog, type PageContext } from "../ai/context"
@@ -84,6 +85,7 @@ export class ReportsService {
     auth: { workspaceId: string; userId: string | null; projectId?: string; source?: "extension" | "widget"; reporter?: { email?: string; name?: string } },
     data: QuickReportInput
   ) {
+    await assertCanCreateReport(this.prisma, auth.workspaceId)
     const logs = sanitizeLogs(data.logs)
     const page = data.page
     const screenshotUrls = (Array.isArray(data.screenshotUrls) ? data.screenshotUrls : [])

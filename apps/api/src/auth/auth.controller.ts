@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post } from "@nestjs/common"
+import { RateLimit } from "../ops/rate-limit"
 import { AuthService } from "./auth.service"
 import { Auth, MinRole, Public, type AuthContext } from "./public.decorator"
 
@@ -7,6 +8,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @RateLimit({ name: "login-code", by: "ip", limit: 20, windowSec: 3600 })
   @Post("request-code")
   @HttpCode(200)
   requestCode(@Body() body: { email?: string }) {
@@ -14,6 +16,7 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit({ name: "login-verify", by: "ip", limit: 40, windowSec: 900 })
   @Post("verify")
   @HttpCode(200)
   verify(@Body() body: { email?: string; code?: string; client?: string }) {
@@ -31,6 +34,7 @@ export class AuthController {
     return this.auth.updateProfile(auth, body ?? {})
   }
 
+  @RateLimit({ name: "ext-token", by: "user", limit: 20, windowSec: 3600 })
   @Post("extension-token")
   @HttpCode(200)
   extensionToken(@Auth() auth: AuthContext) {
@@ -53,6 +57,7 @@ export class ApiKeysController {
     return this.auth.listApiKeys(auth)
   }
 
+  @RateLimit({ name: "api-key", by: "user", limit: 20, windowSec: 86400 })
   @Post()
   @MinRole("member")
   create(@Auth() auth: AuthContext, @Body() body: { name?: string }) {

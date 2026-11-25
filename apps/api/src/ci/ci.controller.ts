@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Post, Query } from "@nestjs/common"
+import { RateLimit } from "../ops/rate-limit"
 import { PrismaService } from "../prisma/prisma.service"
 import { Auth, MinRole, type AuthContext } from "../auth/public.decorator"
 import { logActivity } from "../triage/activity"
@@ -25,6 +26,7 @@ export class CiController {
     private readonly integrations: IntegrationsService
   ) {}
 
+  @RateLimit({ name: "ci", by: "workspace", limit: 300, windowSec: 3600 })
   @Get("tests")
   @MinRole("member")
   async tests(@Auth() auth: AuthContext, @Query("refs") refs: string) {
@@ -36,6 +38,7 @@ export class CiController {
     }
   }
 
+  @RateLimit({ name: "ci-results", by: "workspace", limit: 300, windowSec: 3600 })
   @Post("results")
   @HttpCode(200)
   @MinRole("member")

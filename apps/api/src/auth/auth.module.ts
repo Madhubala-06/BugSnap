@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common"
 import { APP_GUARD } from "@nestjs/core"
+import { RateLimitGuard } from "../ops/rate-limit"
 import { ApiKeysController, AuthController } from "./auth.controller"
 import { AuthGuard } from "./auth.guard"
 import { AuthService } from "./auth.service"
@@ -8,7 +9,7 @@ import { Mailer } from "./mailer"
 @Global()
 @Module({
   controllers: [AuthController, ApiKeysController],
-  providers: [AuthService, Mailer, { provide: APP_GUARD, useClass: AuthGuard }],
+  providers: [AuthService, Mailer, { provide: APP_GUARD, useClass: AuthGuard }, { provide: APP_GUARD, useClass: RateLimitGuard }],
   exports: [AuthService, Mailer],
 })
 export class AuthModule {}

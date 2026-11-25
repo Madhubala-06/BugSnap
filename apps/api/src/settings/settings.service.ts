@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common"
 import { PrismaService } from "../prisma/prisma.service"
 import { Prisma } from "@prisma/client"
 import { decrypt, encrypt } from "../auth/crypto"
+import { planOf } from "../plans/plans"
 
 /** Per-workspace settings. The Gemini key is stored encrypted. */
 @Injectable()
@@ -19,15 +20,16 @@ export class SettingsService {
   async pickGeminiKey(workspaceId: string): Promise<{ key: string; shared: boolean } | { key: null; reason: string }> {
     const ws = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
-      select: { geminiKeyEnc: true, aiUsed: true, aiPeriod: true },
+      select: { geminiKeyEnc: true, aiUsed: true, aiPeriod: true, plan: true },
     })
+    const limit = planOf(ws?.plan).aiPerMonth ?? Infinity
     const own = ws?.geminiKeyEnc ? decrypt(ws.geminiKeyEnc) : null
     if (own) return { key: own, shared: false }
     const shared = process.env.GEMINI_API_KEY
     if (!shared) return { key: null, reason: "No Gemini API key set. Add one in Settings to get an AI write-up." }
     const used = ws?.aiPeriod === currentPeriod() ? ws.aiUsed : 0
-    if (used >= this.sharedLimit) {
-      return { key: null, reason: `You used all ${this.sharedLimit} free AI write-ups this month. Add your own free Gemini key in Settings for unlimited write-ups.` }
+    if (used >= limit) {
+      return { key: null, reason: `You used all ${limit} AI write-ups of your plan this month. Add your own free Gemini key in Settings for unlimited write-ups.` }
     }
     return { key: shared, shared: true }
   }
@@ -45,14 +47,14 @@ export class SettingsService {
   async getKeyStatus(workspaceId: string) {
     const ws = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
-      select: { geminiKeyEnc: true, aiUsed: true, aiPeriod: true, githubRepo: true },
+      select: { geminiKeyEnc: true, aiUsed: true, aiPeriod: true, githubRepo: true, plan: true },
     })
     const own = ws?.geminiKeyEnc ? decrypt(ws.geminiKeyEnc) : null
     return {
       key: own ? (own.length > 14 ? `${own.slice(0, 6)}...${own.slice(-4)}` : "***") : undefined,
       usingServerKey: !own && Boolean(process.env.GEMINI_API_KEY),
       sharedUsed: ws?.aiPeriod === currentPeriod() ? ws.aiUsed : 0,
-      sharedLimit: this.sharedLimit,
+      sharedLimit: planOf(ws?.plan).aiPerMonth ?? this.sharedLimit,
       githubRepo: ws?.githubRepo ?? null,
     }
   }

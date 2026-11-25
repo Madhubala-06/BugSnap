@@ -21,6 +21,9 @@ model Workspace {
   aiPeriod     String?  @map("ai_period") // "2026-11"
   githubRepo   String?  @map("github_repo") // "owner/name"
   isDemo       Boolean  @default(false) @map("is_demo")
+  // "free" or "pro". Limits live in src/plans/plans.ts.
+  plan         String   @default("free")
+  proInterestAt DateTime? @map("pro_interest_at")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -401,4 +404,33 @@ model Verification {
 
   @@index([reportId, createdAt])
   @@map("verifications")
+}
+
+// Fixed-window counters for rate limits (works across serverless instances).
+model RateCounter {
+  key         String   @id
+  windowStart DateTime @map("window_start")
+  count       Int
+
+  @@map("rate_counters")
+}
+
+// Server and browser errors, so problems are seen before users report them.
+model ErrorEvent {
+  id          String   @id @default(cuid())
+  source      String // api | web | extension
+  fingerprint String
+  message     String
+  stack       String?
+  path        String?
+  method      String?
+  status      Int?
+  userId      String?  @map("user_id")
+  workspaceId String?  @map("workspace_id")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([fingerprint, createdAt])
+  @@map("error_events")
 }

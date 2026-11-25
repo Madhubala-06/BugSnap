@@ -167,6 +167,57 @@ export class AIService {
     return { analysis: null, error: lastError }
   }
 
+  /**
+   * Ask Gemini for a JSON answer (text only), cycling through free models until the deadline,
+   * like analyze(). Counts one shared write-up on success.
+   */
+  async generateJson<T>(workspaceId: string, system: string, prompt: string, budgetMs = 90_000, maxOutputTokens = 8192): Promise<{ json: T; model: string } | { error: string }> {
+    const pick = await this.settingsService.pickGeminiKey(workspaceId)
+    if (pick.key === null) return { error: pick.reason }
+    const body = JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens, responseMimeType: "application/json" },
+    })
+    const deadline = Date.now() + budgetMs
+    const retired = new Set<string>()
+    let lastError = "The AI is busy right now. Try again in a minute."
+    let i = 0
+    while (Date.now() < deadline - 5_000) {
+      const live = this.models.filter((m) => !retired.has(m))
+      if (!live.length) break
+      const model = live[i % live.length]
+      if (i > 0 && i % live.length === 0) await new Promise((r) => setTimeout(r, Math.min(10_000, 1000 * 2 ** Math.floor(i / live.length))))
+      i++
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": pick.key },
+          body,
+          signal: AbortSignal.timeout(Math.max(5_000, Math.min(deadline - Date.now(), 80_000))),
+        })
+        if (response.ok) {
+          const data = await response.json()
+          const content: string | undefined = data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("")
+          if (!content) {
+            lastError = "The AI returned an empty answer."
+            continue
+          }
+          const json = JSON.parse(content.replace(/```(json)?/g, "").trim()) as T
+          if (pick.shared) await this.settingsService.countSharedUse(workspaceId)
+          return { json, model }
+        }
+        const text = await response.text()
+        if ((response.status === 400 || response.status === 403) && /API key|permission|PERMISSION_DENIED/i.test(text)) return { error: "The Gemini API key was rejected. Check it in Settings." }
+        if (response.status === 404 || /no longer available|not found/i.test(text)) retired.add(model)
+        else if (/quota|billing/i.test(text)) retired.add(model)
+      } catch {
+        // timeout or bad JSON: try the next model
+      }
+    }
+    return { error: lastError }
+  }
+
   /** Only reads our own uploaded screenshots (local disk or this workspace's Blob folder). */
   private async loadImages(urls: string[], workspaceId: string) {
     const picked = urls.length > MAX_IMAGES ? [urls[0], ...urls.slice(-(MAX_IMAGES - 1))] : urls

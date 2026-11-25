@@ -34,6 +34,8 @@ function describe(item: ActivityItem, memberName: (id?: unknown) => string): str
       return "created a share link"
     case "issue_created":
       return `created ${String(d.key ?? "an issue")} in ${d.provider === "github" ? "GitHub" : d.provider === "linear" ? "Linear" : "Jira"}`
+    case "ai_fix":
+      return `asked the AI for a fix: draft pull request ${String(d.key ?? "")} (${Array.isArray(d.files) ? (d.files as string[]).join(", ") : "files"})`
     case "verified":
       return d.status === "passed"
         ? `verified the fix in CI${d.prNumber ? ` on PR #${String(d.prNumber)}` : ""}: the bug no longer reproduces`

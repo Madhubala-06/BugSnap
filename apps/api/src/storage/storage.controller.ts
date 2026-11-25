@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Body, UseInterceptors, UploadedFile, BadRequestException } from "@nestjs/common"
+import { RateLimit } from "../ops/rate-limit"
 import { FileInterceptor } from "@nestjs/platform-express"
 import { StorageService, type Folder } from "./storage.service"
 import { PrismaService } from "../prisma/prisma.service"
@@ -12,6 +13,7 @@ export class StorageController {
   ) {}
 
   /** Ask for a direct-upload token (production) or learn to use local upload (dev). */
+  @RateLimit({ name: "upload", by: "user", limit: 200, windowSec: 3600 }, { name: "upload", by: "workspace", limit: 1500, windowSec: 86400 })
   @Post("token")
   token(@Auth() auth: AuthContext, @Body() body: { kind?: string; contentType?: string }) {
     const folder: Folder = body?.kind === "recording" ? "recordings" : "thumbnails"
