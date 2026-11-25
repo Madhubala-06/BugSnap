@@ -1,5 +1,6 @@
 import type { RecordingSession, RecordingState, SessionLog, MessageType, PageInfo } from "../lib/types"
-import { getState, setState, setSession } from "../lib/storage"
+import { DEFAULT_API_URL, DEFAULT_APP_URL, getState, setState, setSession } from "../lib/storage"
+import { getAuth, setAuth, signOut } from "../lib/auth"
 
 const MAX_LOGS = 1000
 
@@ -36,9 +37,58 @@ async function handleMessage(message: MessageType, sender: chrome.runtime.Messag
       return addLog(message.log, sender)
     case "PAGE_INFO":
       return setPageInfo(message.info, sender)
+    case "OPEN_SIGN_IN":
+      return openSignIn(message.returnTabId)
+    case "AUTH_SIGN_IN":
+      return signInFromWeb(message, sender)
+    case "AUTH_SIGN_OUT":
+      if (!fromOurSite(sender)) return { ok: false, error: "Not allowed" }
+      await signOut()
+      return { ok: true }
     default:
       return { error: "Unknown message type" }
   }
+}
+
+// ---------- sign-in through the website ----------
+
+const SITE_ORIGINS = [new URL(DEFAULT_APP_URL).origin, "http://localhost:3002"]
+let returnTabId: number | undefined
+
+function fromOurSite(sender: chrome.runtime.MessageSender) {
+  try {
+    return !!sender.url && SITE_ORIGINS.includes(new URL(sender.url).origin)
+  } catch {
+    return false
+  }
+}
+
+/** The popup's Sign in button: open the website, which signs the extension in. */
+async function openSignIn(fromTabId?: number) {
+  returnTabId = fromTabId
+  await chrome.tabs.create({ url: `${DEFAULT_APP_URL}/extension/connect` })
+  return { ok: true }
+}
+
+async function signInFromWeb(message: Extract<MessageType, { type: "AUTH_SIGN_IN" }>, sender: chrome.runtime.MessageSender) {
+  if (!fromOurSite(sender)) return { ok: false, error: "Not allowed" }
+  if (typeof message.token !== "string" || message.token.length > 200) return { ok: false, error: "Bad sign-in" }
+  // Check the token really works before saving it.
+  const res = await fetch(`${DEFAULT_API_URL}/auth/me`, { headers: { Authorization: `Bearer ${message.token}` } }).catch(() => null)
+  if (!res?.ok) return { ok: false, error: "That sign-in did not work. Please try again." }
+  const me = (await res.json()) as { email: string; name: string; workspace?: { name: string } }
+  const old = await getAuth()
+  if (old && old.token !== message.token) await signOut() // end the previous extension sign-in
+  await setAuth({ token: message.token, email: me.email, name: me.name, workspaceName: me.workspace?.name })
+  // Take the user back to the page they were on.
+  const connectTab = sender.tab?.id
+  const back = returnTabId
+  returnTabId = undefined
+  setTimeout(async () => {
+    if (back) await chrome.tabs.update(back, { active: true }).catch(() => undefined)
+    if (back && connectTab) await chrome.tabs.remove(connectTab).catch(() => undefined)
+  }, 1800)
+  return { ok: true }
 }
 
 async function pickTargetTab(targetTabId?: number): Promise<chrome.tabs.Tab | undefined> {

@@ -1,301 +1,288 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { RecordingState } from "./lib/types"
-import { getAuth, requestCode, signOut, verifyCode, type StoredAuth } from "./lib/auth"
+import { apiFetch, getAuth, signOut, type StoredAuth } from "./lib/auth"
 import { DEFAULT_APP_URL } from "./lib/storage"
 import "../style.css"
 import logoUrl from "data-base64:~assets/icon.png"
 
-function SignIn({ onDone }: { onDone: (auth: StoredAuth) => void }) {
-  const [step, setStep] = useState<"email" | "code">("email")
-  const [email, setEmail] = useState("")
-  const [code, setCode] = useState("")
+const W = "w-[332px]"
+const RESTRICTED = /^(chrome|chrome-extension|edge|about|devtools|view-source):|^https:\/\/chromewebstore\.google\.com|^https:\/\/chrome\.google\.com\/webstore/
+
+function openDashboard(path = "/dashboard") {
+  chrome.tabs.create({ url: `${DEFAULT_APP_URL}${path}` })
+  window.close()
+}
+
+function Logo({ onClick }: { onClick?: () => void }) {
+  return (
+    <button onClick={onClick} className="flex items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6]" title="Open BugSnap">
+      <img src={logoUrl} alt="" className="h-7 w-7 rounded-md shadow-[0_0_14px_-3px_rgba(59,130,246,.8)]" />
+      <span className="text-[15px] font-semibold tracking-tight text-white">BugSnap</span>
+    </button>
+  )
+}
+
+function Skeleton() {
+  return (
+    <div className={`${W} space-y-3 bg-[#111113] p-4`}>
+      <div className="h-7 w-28 animate-pulse rounded-md bg-[#1d1d21]" />
+      <div className="h-16 animate-pulse rounded-xl bg-[#1d1d21]" />
+      <div className="h-11 animate-pulse rounded-xl bg-[#1d1d21]" />
+    </div>
+  )
+}
+
+function SignedOut() {
+  const signIn = async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    await chrome.runtime.sendMessage({ type: "OPEN_SIGN_IN", returnTabId: tab?.id })
+    window.close()
+  }
+  return (
+    <div className={`${W} bg-[#111113] px-6 pb-6 pt-8 text-center`}>
+      <img src={logoUrl} alt="" className="mx-auto mb-4 h-12 w-12 rounded-xl shadow-[0_0_22px_-4px_rgba(59,130,246,.8)]" />
+      <h1 className="text-[17px] font-semibold text-white">Sign in to continue</h1>
+      <p className="mx-auto mt-1.5 max-w-[250px] text-[13px] leading-5 text-[#8b8b93]">
+        Record a bug once. BugSnap writes the report, steps and a test for you.
+      </p>
+      <button onClick={signIn} className="mt-5 w-full rounded-xl bg-[#3b82f6] py-2.5 text-sm font-medium text-white transition hover:bg-[#2563eb]">
+        Sign in
+      </button>
+      <p className="mt-3 text-[11.5px] text-[#5c5c64]">New here? Signing in creates your free account.</p>
+    </div>
+  )
+}
+
+function Avatar({ auth, onSignOut }: { auth: StoredAuth; onSignOut: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false)
+    document.addEventListener("mousedown", close)
+    return () => document.removeEventListener("mousedown", close)
+  }, [])
+  const initial = (auth.name || auth.email).trim()[0]?.toUpperCase() ?? "?"
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="grid h-8 w-8 place-items-center rounded-full bg-[#3b82f6]/15 text-[13px] font-semibold text-[#93c5fd] ring-1 ring-[#3b82f6]/30 hover:ring-[#3b82f6]/60"
+        title={auth.email}
+        aria-label="Account menu"
+      >
+        {initial}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-10 z-20 w-56 overflow-hidden rounded-xl border border-[#26262b] bg-[#16161a] shadow-2xl">
+          <div className="border-b border-[#26262b] px-3 py-2.5">
+            <p className="truncate text-[13px] font-medium text-white">{auth.name || auth.email}</p>
+            <p className="truncate text-xs text-[#8b8b93]">{auth.email}</p>
+            {auth.workspaceName && <p className="mt-1 truncate text-xs text-[#5c5c64]">{auth.workspaceName}</p>}
+          </div>
+          <button onClick={() => openDashboard()} className="block w-full px-3 py-2 text-left text-[13px] text-[#d4d4d8] hover:bg-[#1f1f24]">Open dashboard</button>
+          <button onClick={() => openDashboard("/dashboard/reports")} className="block w-full px-3 py-2 text-left text-[13px] text-[#d4d4d8] hover:bg-[#1f1f24]">My bug reports</button>
+          <button onClick={onSignOut} className="block w-full border-t border-[#26262b] px-3 py-2 text-left text-[13px] text-[#f87171] hover:bg-[#1f1f24]">Sign out</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function useActiveTab() {
+  const [tab, setTab] = useState<chrome.tabs.Tab | null>(null)
+  useEffect(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }).then(([t]) => setTab(t ?? null))
+  }, [])
+  return tab
+}
+
+function usePinned() {
+  const [pinned, setPinned] = useState(true)
+  useEffect(() => {
+    const action = chrome.action as unknown as { getUserSettings?: () => Promise<{ isOnToolbar: boolean }> }
+    action.getUserSettings?.().then((s) => setPinned(s.isOnToolbar)).catch(() => undefined)
+  }, [])
+  return pinned
+}
+
+const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
+
+function SignedIn({ auth, onSignOut }: { auth: StoredAuth; onSignOut: () => void }) {
+  const tab = useActiveTab()
+  const pinned = usePinned()
+  const [state, setState] = useState<RecordingState>({ isRecording: false, session: null })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [devCode, setDevCode] = useState<string | null>(null)
+  const [now, setNow] = useState(Date.now())
 
-  const send = async (e?: React.FormEvent) => {
-    e?.preventDefault()
+  useEffect(() => {
+    chrome.runtime.sendMessage({ type: "GET_STATUS" }).then((r) => r?.state && setState(r.state)).catch(() => undefined)
+  }, [])
+  useEffect(() => {
+    if (!state.isRecording) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [state.isRecording])
+
+  const restricted = !!tab?.url && RESTRICTED.test(tab.url)
+  const host = (() => {
+    try {
+      return tab?.url ? new URL(tab.url).host : ""
+    } catch {
+      return ""
+    }
+  })()
+
+  const start = async () => {
     setBusy(true)
     setError(null)
     try {
-      const res = await requestCode(email)
-      setDevCode(res.devCode ?? null)
-      setStep("code")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send the code")
-    } finally {
+      const url = chrome.runtime.getURL(`tabs/recorder.html${tab?.id ? `?tabId=${tab.id}` : ""}`)
+      await chrome.tabs.create({ url, index: (tab?.index ?? 0) + 1, active: true })
+      window.close()
+    } catch {
+      setError("Could not open the recorder")
       setBusy(false)
     }
   }
 
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const finish = async () => {
     setBusy(true)
-    setError(null)
-    try {
-      onDone(await verifyCode(email, code))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not sign in")
-      setBusy(false)
-    }
+    const r = await chrome.runtime.sendMessage({ type: "STOP_RECORDING" }).catch(() => null)
+    if (r?.success) setState({ isRecording: false, session: r.session })
+    else setError(r?.error ?? "Could not stop the recording")
+    setBusy(false)
   }
 
-  const input = "w-full rounded-lg border border-[#2a2a2f] bg-[#18181b] px-3 py-2 text-sm text-white placeholder:text-[#5c5c64] focus:border-[#3b82f6] focus:outline-none"
-  const button = "w-full rounded-lg bg-[#3b82f6] py-2.5 text-sm font-medium text-white hover:bg-[#2563eb] disabled:opacity-60"
+  const goToRecorder = async () => {
+    const [rec] = await chrome.tabs.query({ url: chrome.runtime.getURL("tabs/recorder.html") + "*" })
+    if (rec?.id) {
+      await chrome.tabs.update(rec.id, { active: true })
+      if (rec.windowId) await chrome.windows.update(rec.windowId, { focused: true })
+    }
+    window.close()
+  }
 
-  return step === "email" ? (
-    <form onSubmit={send} className="space-y-3 p-4">
-      <p className="text-sm text-[#a1a1aa]">Sign in to save bug reports to your workspace. We email you a 6-digit code.</p>
-      <input className={input} type="email" required autoFocus placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-      {error && <p className="text-xs text-[#f87171]">{error}</p>}
-      <button className={button} disabled={busy || !email}>{busy ? "Sending..." : "Email me a code"}</button>
-    </form>
-  ) : (
-    <form onSubmit={verify} className="space-y-3 p-4">
-      <p className="text-sm text-[#a1a1aa]">Enter the code we sent to <span className="text-white">{email}</span>.</p>
-      {devCode && <p className="rounded-md bg-[#18181b] px-2 py-1 font-mono text-xs text-[#a1a1aa]">Local dev code: {devCode}</p>}
-      <input className={`${input} font-mono tracking-[0.3em]`} inputMode="numeric" autoComplete="one-time-code" maxLength={7} autoFocus placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} />
-      {error && <p className="text-xs text-[#f87171]">{error}</p>}
-      <button className={button} disabled={busy || code.replace(/\D/g, "").length !== 6}>{busy ? "Signing in..." : "Sign in"}</button>
-      <button type="button" className="w-full text-xs text-[#93c5fd]" onClick={() => setStep("email")}>Use a different email</button>
-    </form>
+  const elapsed = state.session?.startTime ? Math.max(0, Math.floor((now - state.session.startTime) / 1000)) : 0
+  const events = state.session?.logs?.length ?? 0
+
+  return (
+    <div className={`${W} min-h-[270px] bg-[#111113] text-[#ededef]`}>
+      <div className="flex items-center justify-between px-4 pb-2 pt-3.5">
+        <Logo onClick={() => openDashboard()} />
+        <Avatar auth={auth} onSignOut={onSignOut} />
+      </div>
+
+      <div className="px-4 pb-4 pt-2">
+        {state.isRecording ? (
+          <>
+            <div className="rounded-xl border border-[#f87171]/25 bg-[#f87171]/[0.06] p-4">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm font-medium text-white">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#f87171] opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
+                  </span>
+                  Recording
+                </span>
+                <span className="font-mono text-lg tabular-nums text-white">{fmt(elapsed)}</span>
+              </div>
+              <p className="mt-2 text-xs text-[#a1a1aa]">
+                {events} event{events === 1 ? "" : "s"} captured{state.session?.metadata?.url ? ` on ${safeHost(state.session.metadata.url)}` : ""}
+              </p>
+            </div>
+            <button onClick={finish} disabled={busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#ef4444] py-2.5 text-sm font-medium text-white transition hover:bg-[#dc2626] disabled:opacity-60">
+              <span className="h-3 w-3 rounded-[3px] bg-white" />
+              {busy ? "Finishing…" : "Finish and create report"}
+            </button>
+            <button onClick={goToRecorder} className="mt-2 w-full rounded-xl py-2 text-xs text-[#8b8b93] hover:text-white">Go to the recorder tab</button>
+          </>
+        ) : (
+          <>
+            <div className="relative overflow-hidden rounded-xl border border-[#232327] bg-[#16161a] p-3.5">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-[#5c5c64]">This tab</p>
+              <div className="mt-1.5 flex items-center gap-2">
+                {tab?.favIconUrl && !restricted ? <img src={tab.favIconUrl} alt="" className="h-4 w-4 rounded-sm" /> : <span className="h-4 w-4 rounded-sm bg-[#26262b]" />}
+                <span className="truncate text-[13px] text-white">{tab?.title || host || "Current page"}</span>
+              </div>
+              {host && !restricted && <p className="mt-0.5 truncate pl-6 text-xs text-[#5c5c64]">{host}</p>}
+              {restricted && (
+                <div className="absolute inset-0 grid place-items-center bg-[#16161a]/95 px-4 text-center">
+                  <p className="text-[12.5px] leading-5 text-[#a1a1aa]">
+                    <span className="font-medium text-white">Can’t record this page.</span> Open the website with the bug, then click BugSnap again.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {!pinned && (
+              <p className="mt-3 rounded-lg bg-[#3b82f6]/10 px-3 py-2 text-xs leading-5 text-[#93c5fd]">
+                Tip: pin BugSnap to your toolbar. Click the puzzle icon, then the pin next to BugSnap.
+              </p>
+            )}
+
+            {error && <p className="mt-3 rounded-lg bg-[#f87171]/10 px-3 py-2 text-xs text-[#f87171]">{error}</p>}
+
+            <button
+              onClick={start}
+              disabled={busy || restricted}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#3b82f6] py-3 text-sm font-medium text-white shadow-[0_8px_24px_-10px_rgba(59,130,246,.8)] transition hover:bg-[#2563eb] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-white" />
+              {busy ? "Opening…" : "Start recording"}
+            </button>
+            <p className="mt-2.5 text-center text-[11.5px] leading-4 text-[#5c5c64]">Records your screen, clicks, console and network. Passwords and keys are hidden.</p>
+          </>
+        )}
+      </div>
+    </div>
   )
+}
+
+function safeHost(url: string) {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }
 
 function Popup() {
   const [auth, setAuthState] = useState<StoredAuth | null | undefined>(undefined)
-  const [state, setState] = useState<RecordingState>({
-    isRecording: false,
-    session: null,
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [duration, setDuration] = useState(0)
 
   useEffect(() => {
-    getAuth().then(setAuthState)
-  }, [])
-
-  // Get current status on mount
-  useEffect(() => {
-    chrome.runtime.sendMessage({ type: "GET_STATUS" }).then((response) => {
-      if (response?.state) {
-        setState(response.state)
+    getAuth().then(async (saved) => {
+      setAuthState(saved)
+      if (!saved) return
+      // Refresh name/workspace, and notice if the sign-in was ended elsewhere.
+      try {
+        const res = await apiFetch("/auth/me")
+        if (res.ok) {
+          const me = await res.json()
+          const fresh = { ...saved, email: me.email, name: me.name, workspaceName: me.workspace?.name }
+          await chrome.storage.local.set({ bugsnapAuth: fresh })
+        }
+      } catch {
+        // 401 clears the sign-in (handled in apiFetch); offline keeps the saved one
       }
     })
+    const onChange = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === "local" && "bugsnapAuth" in changes) setAuthState(changes.bugsnapAuth.newValue ?? null)
+    }
+    chrome.storage.onChanged.addListener(onChange)
+    return () => chrome.storage.onChanged.removeListener(onChange)
   }, [])
 
-  // Update duration timer
-  useEffect(() => {
-    if (!state.isRecording || !state.session?.startTime) {
-      setDuration(0)
-      return
-    }
-
-    const interval = setInterval(() => {
-      setDuration(Math.floor((Date.now() - state.session!.startTime!) / 1000))
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [state.isRecording, state.session?.startTime])
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-  }
-
-  const handleStartRecording = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      // Open the recorder tab for screen capture
-      // Remember which tab has the bug before the recorder tab takes focus.
-      const [bugTab] = await chrome.tabs.query({ active: true, currentWindow: true })
-      const recorderUrl = chrome.runtime.getURL(
-        `tabs/recorder.html${bugTab?.id ? `?tabId=${bugTab.id}` : ""}`
-      )
-      // Open the recorder next to the bug tab, in the background, so the user stays on the page.
-      await chrome.tabs.create({ url: recorderUrl, index: (bugTab?.index ?? 0) + 1, active: true })
-
-      // Close popup - recording will happen in the new tab
-      window.close()
-    } catch (err) {
-      setError("Failed to open recorder")
-      setLoading(false)
-    }
-  }
-
-  const handleStopRecording = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await chrome.runtime.sendMessage({ type: "STOP_RECORDING" })
-      if (response?.success) {
-        setState({ isRecording: false, session: response.session })
-      } else {
-        setError(response?.error || "Failed to stop recording")
-      }
-    } catch (err) {
-      setError("Failed to stop recording")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const logsCount = state.session?.logs?.length || 0
-
+  if (auth === undefined) return <Skeleton />
+  if (!auth) return <SignedOut />
   return (
-    <div className="w-80 bg-[#111113] text-[#ededef]">
-      {/* Header */}
-      <div className="bg-[#141416] border-b border-[#232327] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <img src={logoUrl} alt="" className="w-7 h-7 rounded-md shadow-[0_0_14px_-3px_rgba(59,130,246,.8)]" />
-          <h1 className="text-lg font-semibold text-white">BugSnap</h1>
-        </div>
-      </div>
-
-      {auth === null && <SignIn onDone={setAuthState} />}
-      {auth && (<>
-
-      {/* Content */}
-      <div className="p-4">
-        {/* Status */}
-        <div className="mb-4 p-3 rounded-lg bg-[#18181b]">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[#8b8b93]">Status</span>
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  state.isRecording ? "bg-[#f87171]/100 animate-pulse" : "bg-[#5c5c64]"
-                }`}
-              />
-              <span className="text-sm font-medium">
-                {state.isRecording ? "Recording" : "Ready"}
-              </span>
-            </div>
-          </div>
-
-          {state.isRecording && (
-            <>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-[#8b8b93]">Duration</span>
-                <span className="text-sm font-mono font-medium text-[#93c5fd]">
-                  {formatDuration(duration)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-[#8b8b93]">Events Captured</span>
-                <span className="text-sm font-medium">{logsCount}</span>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-[#f87171]/10 border border-[#f87171]/30">
-            <p className="text-sm text-[#f87171]">{error}</p>
-          </div>
-        )}
-
-        {/* Recording Button */}
-        <button
-          onClick={state.isRecording ? handleStopRecording : handleStartRecording}
-          disabled={loading}
-          className={`w-full py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-            state.isRecording
-              ? "bg-[#f87171]/100 hover:bg-[#dc2626] text-white"
-              : "bg-[#3b82f6] hover:bg-[#2563eb] text-white"
-          } ${loading ? "opacity-70 cursor-not-allowed" : ""}`}
-        >
-          {loading ? (
-            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="none"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          ) : state.isRecording ? (
-            <>
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <rect x="6" y="6" width="12" height="12" rx="1" />
-              </svg>
-              Stop Recording
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="8" />
-              </svg>
-              Start Recording
-            </>
-          )}
-        </button>
-
-        {/* Session info after stopping */}
-        {!state.isRecording && state.session && state.session.logs.length > 0 && (
-          <div className="mt-4 p-3 rounded-lg bg-[#4ade80]/10 border border-[#4ade80]/30">
-            <p className="text-sm text-[#4ade80] font-medium">Recording Complete!</p>
-            <p className="text-xs text-[#86efac] mt-1">
-              Captured {state.session.logs.length} events
-            </p>
-          </div>
-        )}
-
-        {/* Help text */}
-        <p className="mt-4 text-xs text-[#5c5c64] text-center">
-          {state.isRecording
-            ? "Recording in progress in another tab"
-            : "Opens screen recorder to capture video"}
-        </p>
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-[#232327] bg-[#18181b] space-y-2">
-        <div className="flex items-center justify-between text-xs text-[#8b8b93]">
-          <span className="truncate" title={auth.email}>{auth.email}</span>
-          <button
-            className="text-[#93c5fd] hover:text-white"
-            onClick={async () => {
-              await signOut()
-              setAuthState(null)
-            }}
-          >
-            Sign out
-          </button>
-        </div>
-        <a
-          href={`${DEFAULT_APP_URL}/dashboard`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-[#93c5fd] hover:text-white flex items-center justify-center gap-1"
-        >
-          Open Dashboard
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-            />
-          </svg>
-        </a>
-      </div>
-      </>)}
-    </div>
+    <SignedIn
+      auth={auth}
+      onSignOut={async () => {
+        await signOut()
+        setAuthState(null)
+      }}
+    />
   )
 }
 

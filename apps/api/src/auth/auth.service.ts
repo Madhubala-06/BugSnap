@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common"
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common"
 import { PrismaService } from "../prisma/prisma.service"
 import { Mailer } from "./mailer"
 import { normalizeEmail, randomCode, randomToken, safeEqual, sha256 } from "./crypto"
@@ -189,6 +189,19 @@ export class AuthService {
 
   hasRole(auth: AuthContext, min: Role) {
     return ROLE_RANK[auth.role] >= ROLE_RANK[min]
+  }
+
+  /**
+   * A separate sign-in for the Chrome extension, handed over by the signed-in web app
+   * (the website's own token is never shared). Signing out of one does not end the other.
+   */
+  async issueExtensionToken(auth: AuthContext) {
+    if (auth.tokenId.startsWith("apikey:")) throw new ForbiddenException("Use a browser sign-in to connect the extension")
+    const token = randomToken()
+    await this.prisma.authToken.create({
+      data: { userId: auth.userId, tokenHash: sha256(token), client: "extension", expiresAt: new Date(Date.now() + TOKEN_TTL_MS) },
+    })
+    return { token, me: await this.me(auth) }
   }
 
   async logout(auth: AuthContext) {

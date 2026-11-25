@@ -79,6 +79,9 @@ export async function getMe(): Promise<Me | null> {
 }
 
 export async function signOut() {
+  // Sign the Chrome extension out too, so a shared computer does not stay signed in there.
+  const { askExtension, extensionInstalled } = await import("./extension")
+  if (extensionInstalled()) await askExtension("BUGSNAP_SIGN_OUT", {}, 1500)
   await authFetch(`${API_URL}/auth/logout`, { method: "POST" }).catch(() => undefined)
   setToken(null)
   window.location.href = "/login"

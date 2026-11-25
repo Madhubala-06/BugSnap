@@ -31,6 +31,12 @@ export class AuthController {
     return this.auth.updateProfile(auth, body ?? {})
   }
 
+  @Post("extension-token")
+  @HttpCode(200)
+  extensionToken(@Auth() auth: AuthContext) {
+    return this.auth.issueExtensionToken(auth)
+  }
+
   @Post("logout")
   @HttpCode(200)
   logout(@Auth() auth: AuthContext) {

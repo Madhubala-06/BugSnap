@@ -44,3 +44,6 @@ export type MessageType =
   | { type: "RECORDING_STOPPED"; session: RecordingSession }
   | { type: "STATUS_UPDATE"; state: RecordingState }
   | { type: "ERROR"; error: string }
+  | { type: "AUTH_SIGN_IN"; token: string; email: string; name?: string; workspaceName?: string }
+  | { type: "AUTH_SIGN_OUT" }
+  | { type: "OPEN_SIGN_IN"; returnTabId?: number }

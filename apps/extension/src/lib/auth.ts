@@ -5,6 +5,7 @@ const AUTH_KEY = "bugsnapAuth"
 export interface StoredAuth {
   token: string
   email: string
+  name?: string
   workspaceName?: string
 }
 
@@ -28,15 +29,6 @@ async function post(path: string, body: unknown, token?: string) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(typeof data.message === "string" ? data.message : `Request failed (${res.status})`)
   return data
-}
-
-export const requestCode = (email: string) => post("/auth/request-code", { email }) as Promise<{ sent: boolean; devCode?: string }>
-
-export async function verifyCode(email: string, code: string) {
-  const data = await post("/auth/verify", { email, code, client: "extension" })
-  const auth: StoredAuth = { token: data.token, email: data.user.email, workspaceName: data.user.workspace?.name }
-  await setAuth(auth)
-  return auth
 }
 
 export async function signOut() {
