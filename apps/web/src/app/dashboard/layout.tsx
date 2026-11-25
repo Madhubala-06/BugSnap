@@ -22,11 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <NewProjectDialog />
-          <Toaster
-            position="bottom-right"
-            theme="system"
-            toastOptions={{ className: "!bg-card !border-border !text-foreground" }}
-          />
+          <Toaster position="bottom-right" theme="system" toastOptions={{ className: "!bg-card !border-border !text-foreground" }} />
         </TooltipProvider>
       </WorkspaceDataProvider>
     </AuthGate>

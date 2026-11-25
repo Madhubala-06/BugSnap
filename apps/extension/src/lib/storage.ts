@@ -36,11 +36,7 @@ export async function getConfig(): Promise<{
   userId: string | null
   workspaceId: string | null
 }> {
-  const result = await chrome.storage.local.get([
-    STORAGE_KEYS.API_URL,
-    STORAGE_KEYS.USER_ID,
-    STORAGE_KEYS.WORKSPACE_ID,
-  ])
+  const result = await chrome.storage.local.get([STORAGE_KEYS.API_URL, STORAGE_KEYS.USER_ID, STORAGE_KEYS.WORKSPACE_ID])
   return {
     apiUrl: result[STORAGE_KEYS.API_URL] || DEFAULT_API_URL,
     appUrl: DEFAULT_APP_URL,
@@ -49,11 +45,7 @@ export async function getConfig(): Promise<{
   }
 }
 
-export async function setConfig(config: {
-  apiUrl?: string
-  userId?: string
-  workspaceId?: string
-}): Promise<void> {
+export async function setConfig(config: { apiUrl?: string; userId?: string; workspaceId?: string }): Promise<void> {
   const updates: Record<string, string> = {}
   if (config.apiUrl) updates[STORAGE_KEYS.API_URL] = config.apiUrl
   if (config.userId) updates[STORAGE_KEYS.USER_ID] = config.userId

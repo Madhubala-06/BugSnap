@@ -24,7 +24,12 @@ async function gh(p, init = {}) {
   if (!env.GITHUB_TOKEN) return null
   const r = await fetch(`https://api.github.com${p}`, {
     ...init,
-    headers: { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", ...(init.headers || {}) },
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    },
   })
   return r.ok ? r.json() : null
 }
@@ -37,14 +42,15 @@ if (pr && repo) {
 }
 const refs = [...new Set([...text.matchAll(/\bBUG[-_ ]?(\d{1,7})\b/gi)].map((m) => Number(m[1])))]
 if (!refs.length) {
-  console.log("No BugSnap bugs mentioned (write \"Fixes BUG-12\" in the PR title or description). Nothing to verify.")
+  console.log('No BugSnap bugs mentioned (write "Fixes BUG-12" in the PR title or description). Nothing to verify.')
   out("result", "none")
   process.exit(0)
 }
 console.log(`Bugs mentioned: ${refs.map((n) => `BUG-${n}`).join(", ")}`)
 
 // 2) Download their tests.
-const api = (p, init = {}) => fetch(`${API}${p}`, { ...init, headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", ...(init.headers || {}) } })
+const api = (p, init = {}) =>
+  fetch(`${API}${p}`, { ...init, headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json", ...(init.headers || {}) } })
 const res = await api(`/ci/tests?refs=${refs.map((n) => `BUG-${n}`).join(",")}`)
 if (!res.ok) {
   console.error(`::error::BugSnap answered ${res.status}. Check the API key.`)
@@ -63,7 +69,7 @@ fs.mkdirSync(path.join(dir, "tests"), { recursive: true })
 fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "bugsnap-verify", private: true, type: "commonjs" }))
 fs.writeFileSync(
   path.join(dir, "playwright.config.js"),
-  `module.exports = { testDir: "tests", timeout: 60000, retries: 1, reporter: [["json", { outputFile: "results.json" }], ["list"]], use: { headless: true, trace: "off" } }\n`
+  `module.exports = { testDir: "tests", timeout: 60000, retries: 1, reporter: [["json", { outputFile: "results.json" }], ["list"]], use: { headless: true, trace: "off" } }\n`,
 )
 for (const t of tests) fs.writeFileSync(path.join(dir, "tests", `bug-${t.number}.spec.ts`), t.test)
 console.log("Installing Playwright (Chromium)…")
@@ -84,13 +90,25 @@ const walk = (suite) => {
   for (const s of suite.suites ?? []) walk(s)
 }
 for (const s of report.suites ?? []) walk(s)
-const results = tests.map((t) => ({ number: t.number, title: t.title, url: t.url, ...(byFile[`bug-${t.number}.spec.ts`] ?? { status: "error", details: "The test did not run" }) }))
+const results = tests.map((t) => ({
+  number: t.number,
+  title: t.title,
+  url: t.url,
+  ...(byFile[`bug-${t.number}.spec.ts`] ?? { status: "error", details: "The test did not run" }),
+}))
 
 // 5) Send to BugSnap.
 const runUrl = env.GITHUB_SERVER_URL && repo && env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL}/${repo}/actions/runs/${env.GITHUB_RUN_ID}` : undefined
 await api("/ci/results", {
   method: "POST",
-  body: JSON.stringify({ repo, prNumber: pr?.number, prUrl: pr?.html_url, commitSha: pr?.head?.sha || env.GITHUB_SHA, runUrl, results: results.map(({ number, status, details }) => ({ number, status, details })) }),
+  body: JSON.stringify({
+    repo,
+    prNumber: pr?.number,
+    prUrl: pr?.html_url,
+    commitSha: pr?.head?.sha || env.GITHUB_SHA,
+    runUrl,
+    results: results.map(({ number, status, details }) => ({ number, status, details })),
+  }),
 }).catch(() => console.warn("Could not send results to BugSnap"))
 
 // 6) Comment on the PR (one comment, updated on each run) and write the job summary.
@@ -111,7 +129,15 @@ const body = [
   "| Bug | Title | Result |",
   "| --- | --- | --- |",
   ...rows,
-  ...(failed.length ? ["", "<details><summary>Why it failed</summary>", "", ...failed.map((r) => `**BUG-${r.number}**\n\n\`\`\`\n${r.details || "no details"}\n\`\`\``), "</details>"] : []),
+  ...(failed.length
+    ? [
+        "",
+        "<details><summary>Why it failed</summary>",
+        "",
+        ...failed.map((r) => `**BUG-${r.number}**\n\n\`\`\`\n${r.details || "no details"}\n\`\`\``),
+        "</details>",
+      ]
+    : []),
   "",
   `<sub>Each bug's test replays the steps recorded in BugSnap${env.BUGSNAP_BASE_URL ? ` against ${env.BUGSNAP_BASE_URL}` : ""}.${runUrl ? ` [Run log](${runUrl})` : ""}</sub>`,
 ].join("\n")

@@ -36,7 +36,10 @@ export function AgentKeys() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = () => listApiKeys().then(setKeys).catch(() => undefined)
+  const load = () =>
+    listApiKeys()
+      .then(setKeys)
+      .catch(() => undefined)
   useEffect(() => {
     load()
   }, [])
@@ -54,8 +57,8 @@ export function AgentKeys() {
           Connect your AI coding agent
         </CardTitle>
         <CardDescription>
-          Claude Code, Cursor and other MCP tools can list your bugs, read the exact errors and timeline, get a regression test, and mark bugs fixed.
-          Try asking: &ldquo;Fix the latest BugSnap bug&rdquo;.
+          Claude Code, Cursor and other MCP tools can list your bugs, read the exact errors and timeline, get a regression test, and mark bugs fixed. Try
+          asking: &ldquo;Fix the latest BugSnap bug&rdquo;.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -82,7 +85,11 @@ export function AgentKeys() {
             Create key
           </Button>
         </form>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
 
         {fresh && (
           <div className="space-y-1 rounded-lg border border-primary/30 bg-primary/5 p-3">

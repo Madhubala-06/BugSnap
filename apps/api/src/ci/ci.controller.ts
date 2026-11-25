@@ -23,7 +23,7 @@ type Result = { number?: unknown; status?: unknown; details?: unknown }
 export class CiController {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly integrations: IntegrationsService
+    private readonly integrations: IntegrationsService,
   ) {}
 
   @RateLimit({ name: "ci", by: "workspace", limit: 300, windowSec: 3600 })
@@ -34,7 +34,14 @@ export class CiController {
     if (!numbers.length) return { tests: [] }
     const reports = await this.prisma.bugReport.findMany({ where: { workspaceId: auth.workspaceId, number: { in: numbers } } })
     return {
-      tests: reports.map((r) => ({ number: r.number, id: r.id, title: r.title, status: r.status, url: `${appUrl()}/dashboard/reports/${r.id}`, test: toPlaywrightTest(r) })),
+      tests: reports.map((r) => ({
+        number: r.number,
+        id: r.id,
+        title: r.title,
+        status: r.status,
+        url: `${appUrl()}/dashboard/reports/${r.id}`,
+        test: toPlaywrightTest(r),
+      })),
     }
   }
 
@@ -44,7 +51,7 @@ export class CiController {
   @MinRole("member")
   async results(
     @Auth() auth: AuthContext,
-    @Body() body: { repo?: unknown; prNumber?: unknown; prUrl?: unknown; commitSha?: unknown; runUrl?: unknown; results?: Result[] }
+    @Body() body: { repo?: unknown; prNumber?: unknown; prUrl?: unknown; commitSha?: unknown; runUrl?: unknown; results?: Result[] },
   ) {
     if (!Array.isArray(body?.results) || !body.results.length) throw new BadRequestException("No results")
     const str = (v: unknown, max = 300) => (typeof v === "string" && v ? v.slice(0, max) : null)
@@ -56,7 +63,16 @@ export class CiController {
       const report = await this.prisma.bugReport.findFirst({ where: { workspaceId: auth.workspaceId, number: Number(r.number) } })
       if (!report) continue
       await this.prisma.verification.create({
-        data: { reportId: report.id, status, repo: str(body.repo, 200), prNumber, prUrl: link(body.prUrl), commitSha: str(body.commitSha, 64), runUrl: link(body.runUrl), details: str(r.details, 4000) },
+        data: {
+          reportId: report.id,
+          status,
+          repo: str(body.repo, 200),
+          prNumber,
+          prUrl: link(body.prUrl),
+          commitSha: str(body.commitSha, 64),
+          runUrl: link(body.runUrl),
+          details: str(r.details, 4000),
+        },
       })
       await logActivity(this.prisma, report.id, auth.userId, "verified", { status, prNumber, prUrl: link(body.prUrl), repo: str(body.repo, 200) })
       // A passing test on a PR means the fix is ready (it becomes Resolved when the PR's issue closes or someone marks it).

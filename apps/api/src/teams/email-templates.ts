@@ -17,7 +17,7 @@ export function inviteEmail(p: { inviter: string; workspace: string; role: strin
   const html = wrap(
     `Join ${p.workspace} on BugSnap`,
     `<p><b>${esc(p.inviter)}</b> invited you to join <b>${esc(p.workspace)}</b> as <b>${esc(p.role)}</b>.</p><p>BugSnap records bugs with the video, console errors and failed requests, and writes the report with AI.</p><p style="color:#888;font-size:12px">The link works for 7 days.</p>`,
-    { label: "Accept invite", url: p.url }
+    { label: "Accept invite", url: p.url },
   )
   return { subject, text, html }
 }
@@ -25,7 +25,10 @@ export function inviteEmail(p: { inviter: string; workspace: string; role: strin
 export function assignedEmail(p: { actor: string; bug: string; title: string; url: string }) {
   const subject = `${p.bug}: ${p.title} was assigned to you`
   const text = `${p.actor} assigned ${p.bug} to you: ${p.title}\n\nOpen it: ${p.url}`
-  const html = wrap(`${p.bug} is yours`, `<p><b>${esc(p.actor)}</b> assigned you <b>${esc(p.bug)}</b>: ${esc(p.title)}</p>`, { label: "Open the bug", url: p.url })
+  const html = wrap(`${p.bug} is yours`, `<p><b>${esc(p.actor)}</b> assigned you <b>${esc(p.bug)}</b>: ${esc(p.title)}</p>`, {
+    label: "Open the bug",
+    url: p.url,
+  })
   return { subject, text, html }
 }
 
@@ -35,7 +38,7 @@ export function mentionEmail(p: { actor: string; bug: string; title: string; com
   const html = wrap(
     `${p.actor} mentioned you`,
     `<p>On <b>${esc(p.bug)}</b>: ${esc(p.title)}</p><blockquote style="margin:12px 0;padding:8px 12px;border-left:3px solid #2563eb;background:#f5f7ff">${esc(p.comment)}</blockquote>`,
-    { label: "Reply", url: p.url }
+    { label: "Reply", url: p.url },
   )
   return { subject, text, html }
 }

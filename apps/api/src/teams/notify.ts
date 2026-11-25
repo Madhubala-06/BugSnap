@@ -26,9 +26,14 @@ export function notifyAssigned(prisma: PrismaService, mailer: Mailer, reportId: 
         prisma.user.findUnique({ where: { id: actorId }, select: { name: true } }),
       ])
       if (!report || !assignee?.notifyEmail) return
-      const mail = assignedEmail({ actor: actor?.name ?? "Someone", bug: `BUG-${report.number ?? ""}`, title: report.title, url: `${appUrl()}/dashboard/reports/${report.id}` })
+      const mail = assignedEmail({
+        actor: actor?.name ?? "Someone",
+        bug: `BUG-${report.number ?? ""}`,
+        title: report.title,
+        url: `${appUrl()}/dashboard/reports/${report.id}`,
+      })
       await mailer.sendEmail(assignee.email, mail.subject, mail.text, mail.html)
-    })()
+    })(),
   )
 }
 
@@ -53,7 +58,10 @@ export function notifyMentions(prisma: PrismaService, mailer: Mailer, reportId: 
         where: { workspaceId },
         include: { user: { select: { id: true, name: true, email: true, notifyEmail: true } } },
       })
-      const ids = findMentions(comment, members.map((m) => m.user)).filter((id) => id !== actorId)
+      const ids = findMentions(
+        comment,
+        members.map((m) => m.user),
+      ).filter((id) => id !== actorId)
       if (!ids.length) return
       const [report, actor] = await Promise.all([
         prisma.bugReport.findUnique({ where: { id: reportId }, select: { id: true, number: true, title: true } }),
@@ -70,6 +78,6 @@ export function notifyMentions(prisma: PrismaService, mailer: Mailer, reportId: 
         })
         await mailer.sendEmail(m.user.email, mail.subject, mail.text, mail.html)
       }
-    })()
+    })(),
   )
 }

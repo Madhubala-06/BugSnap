@@ -14,7 +14,10 @@ async function linear<T>(apiKey: string, query: string, variables: Record<string
 }
 
 export async function linearViewer(apiKey: string) {
-  const d = await linear<{ viewer: { name: string; email: string }; organization: { name: string; urlKey: string } }>(apiKey, `{ viewer { name email } organization { name urlKey } }`)
+  const d = await linear<{ viewer: { name: string; email: string }; organization: { name: string; urlKey: string } }>(
+    apiKey,
+    `{ viewer { name email } organization { name urlKey } }`,
+  )
   return d
 }
 
@@ -27,7 +30,7 @@ export async function linearCreateIssue(apiKey: string, teamId: string, title: s
   const d = await linear<{ issueCreate: { success: boolean; issue: { id: string; identifier: string; url: string; state: { name: string; type: string } } } }>(
     apiKey,
     `mutation($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { id identifier url state { name type } } } }`,
-    { input: { teamId, title: title.slice(0, 250), description: description.slice(0, 60_000) } }
+    { input: { teamId, title: title.slice(0, 250), description: description.slice(0, 60_000) } },
   )
   return d.issueCreate.issue
 }
@@ -37,11 +40,14 @@ export async function linearSetStateType(apiKey: string, issueId: string, type: 
   const d = await linear<{ issue: { team: { states: { nodes: { id: string; type: string; position: number }[] } } } }>(
     apiKey,
     `query($id: String!) { issue(id: $id) { team { states { nodes { id type position } } } } }`,
-    { id: issueId }
+    { id: issueId },
   )
   const state = d.issue.team.states.nodes.filter((s) => s.type === type).sort((a, b) => a.position - b.position)[0]
   if (!state) return
-  await linear(apiKey, `mutation($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }`, { id: issueId, stateId: state.id })
+  await linear(apiKey, `mutation($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }`, {
+    id: issueId,
+    stateId: state.id,
+  })
 }
 
 /** Ask Linear to call us when issues change. Returns the webhook id. */
@@ -49,7 +55,7 @@ export async function linearCreateWebhook(apiKey: string, url: string, secret: s
   const d = await linear<{ webhookCreate: { success: boolean; webhook: { id: string } } }>(
     apiKey,
     `mutation($input: WebhookCreateInput!) { webhookCreate(input: $input) { success webhook { id } } }`,
-    { input: { url, secret, resourceTypes: ["Issue"], allPublicTeams: true, label: "BugSnap" } }
+    { input: { url, secret, resourceTypes: ["Issue"], allPublicTeams: true, label: "BugSnap" } },
   )
   return d.webhookCreate.webhook.id
 }

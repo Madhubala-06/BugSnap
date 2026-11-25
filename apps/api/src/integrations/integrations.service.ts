@@ -108,14 +108,20 @@ export class IntegrationsService {
   /** Signed state for the GitHub install redirect, so it lands in the right workspace. */
   signState(workspaceId: string, userId: string) {
     const body = Buffer.from(JSON.stringify({ w: workspaceId, u: userId, e: Date.now() + 30 * 60 * 1000 })).toString("base64url")
-    const sig = crypto.createHmac("sha256", process.env.APP_SECRET || "bugsnap-dev-only-secret").update(body).digest("base64url")
+    const sig = crypto
+      .createHmac("sha256", process.env.APP_SECRET || "bugsnap-dev-only-secret")
+      .update(body)
+      .digest("base64url")
     return `${body}.${sig}`
   }
 
   readState(state: string): { w: string; u: string } | null {
     const [body, sig] = (state || "").split(".")
     if (!body || !sig) return null
-    const expected = crypto.createHmac("sha256", process.env.APP_SECRET || "bugsnap-dev-only-secret").update(body).digest("base64url")
+    const expected = crypto
+      .createHmac("sha256", process.env.APP_SECRET || "bugsnap-dev-only-secret")
+      .update(body)
+      .digest("base64url")
     if (expected.length !== sig.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) return null
     const data = JSON.parse(Buffer.from(body, "base64url").toString()) as { w: string; u: string; e: number }
     return data.e > Date.now() ? data : null
@@ -124,7 +130,14 @@ export class IntegrationsService {
   async connectGithub(workspaceId: string, userId: string, installationId: string) {
     const info = await GH.installationInfo(installationId)
     const repos = await GH.listRepos(installationId).catch(() => [])
-    await this.save(workspaceId, "github", { installationId, account: info.account.login, defaultRepo: repos[0]?.fullName ?? null }, null, userId, installationId)
+    await this.save(
+      workspaceId,
+      "github",
+      { installationId, account: info.account.login, defaultRepo: repos[0]?.fullName ?? null },
+      null,
+      userId,
+      installationId,
+    )
   }
 
   async connectSlack(workspaceId: string, userId: string, body: { webhookUrl?: unknown; channel?: unknown }) {
@@ -157,10 +170,16 @@ export class IntegrationsService {
     await this.save(
       workspaceId,
       "linear",
-      { organization: who.organization.name, urlKey: who.organization.urlKey, teamId: teams[0]?.id ?? null, teams: teams.map((t) => ({ id: t.id, key: t.key, name: t.name })), sync: Boolean(webhookId) },
+      {
+        organization: who.organization.name,
+        urlKey: who.organization.urlKey,
+        teamId: teams[0]?.id ?? null,
+        teams: teams.map((t) => ({ id: t.id, key: t.key, name: t.name })),
+        sync: Boolean(webhookId),
+      },
       { apiKey, webhookId, webhookSecret },
       userId,
-      hookToken
+      hookToken,
     )
   }
 
@@ -229,36 +248,42 @@ export class IntegrationsService {
     const isDone = DONE.includes(to)
     if (wasDone === isDone) return
     const job = (async () => {
-        const links = await this.prisma.reportLink.findMany({ where: { reportId } })
-        for (const l of links) {
-          const row = await this.get(workspaceId, l.provider as Provider)
-          if (!row) continue
-          try {
-            if (l.provider === "github") {
-              const [repo, num] = l.externalId.split("#")
-              await GH.setIssueState(String((row.config as Cfg).installationId), repo, Number(num), isDone ? "closed" : "open", to === "WONT_FIX" ? "not_planned" : "completed")
-              await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: isDone ? "closed" : "open" } })
-            } else if (l.provider === "linear") {
-              const s = this.secret<{ apiKey: string }>(row)
-              if (s) {
-                await linearSetStateType(s.apiKey, l.externalId, isDone ? (to === "WONT_FIX" ? "canceled" : "completed") : "unstarted")
-                await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: isDone ? (to === "WONT_FIX" ? "Canceled" : "Done") : "Todo" } })
-              }
-            } else if (l.provider === "jira") {
-              const s = this.secret<JiraCreds>(row)
-              if (s) {
-                await jiraMoveTo(s, l.externalId, isDone ? "done" : "new")
-                const st = await jiraStatus(s, l.externalId).catch(() => null)
-                if (st) await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: st.name } })
-              }
+      const links = await this.prisma.reportLink.findMany({ where: { reportId } })
+      for (const l of links) {
+        const row = await this.get(workspaceId, l.provider as Provider)
+        if (!row) continue
+        try {
+          if (l.provider === "github") {
+            const [repo, num] = l.externalId.split("#")
+            await GH.setIssueState(
+              String((row.config as Cfg).installationId),
+              repo,
+              Number(num),
+              isDone ? "closed" : "open",
+              to === "WONT_FIX" ? "not_planned" : "completed",
+            )
+            await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: isDone ? "closed" : "open" } })
+          } else if (l.provider === "linear") {
+            const s = this.secret<{ apiKey: string }>(row)
+            if (s) {
+              await linearSetStateType(s.apiKey, l.externalId, isDone ? (to === "WONT_FIX" ? "canceled" : "completed") : "unstarted")
+              await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: isDone ? (to === "WONT_FIX" ? "Canceled" : "Done") : "Todo" } })
             }
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error)
-            console.error(`Sync to ${l.provider} failed: ${message}`)
-            await logActivity(this.prisma, reportId, null, "sync_failed", { provider: l.provider, key: l.key, error: message.slice(0, 200) })
+          } else if (l.provider === "jira") {
+            const s = this.secret<JiraCreds>(row)
+            if (s) {
+              await jiraMoveTo(s, l.externalId, isDone ? "done" : "new")
+              const st = await jiraStatus(s, l.externalId).catch(() => null)
+              if (st) await this.prisma.reportLink.update({ where: { id: l.id }, data: { state: st.name } })
+            }
           }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          console.error(`Sync to ${l.provider} failed: ${message}`)
+          await logActivity(this.prisma, reportId, null, "sync_failed", { provider: l.provider, key: l.key, error: message.slice(0, 200) })
         }
-      })()
+      }
+    })()
     // Wait up to 8 s so the change lands before the response; finish in the background if slower.
     const timeout = new Promise((r) => setTimeout(r, 8000))
     await Promise.race([job, timeout])
@@ -297,19 +322,27 @@ export class IntegrationsService {
 
   async notifySlack(workspaceId: string, event: "created" | "assigned" | "resolved", reportId: string, extra?: string) {
     const job = (async () => {
-        const row = await this.get(workspaceId, "slack")
-        if (!row) return
-        const events = cleanEvents((row.config as Cfg).events)
-        if (!events.includes(event)) return
-        const s = this.secret<{ webhookUrl: string }>(row)
-        const report = await this.prisma.bugReport.findUnique({ where: { id: reportId } })
-        if (!s || !report) return
-        const headline = event === "created" ? ":beetle: New bug" : event === "assigned" ? ":bust_in_silhouette: Bug assigned" : ":white_check_mark: Bug resolved"
-        await postToSlack(
-          s.webhookUrl,
-          slackMessage({ headline, bug: `BUG-${report.number ?? ""}`, title: report.title, severity: report.severity, url: `${appUrl()}/dashboard/reports/${report.id}`, page: report.url, extra })
-        )
-      })().catch((e) => console.error(`Slack alert failed: ${e instanceof Error ? e.message : e}`))
+      const row = await this.get(workspaceId, "slack")
+      if (!row) return
+      const events = cleanEvents((row.config as Cfg).events)
+      if (!events.includes(event)) return
+      const s = this.secret<{ webhookUrl: string }>(row)
+      const report = await this.prisma.bugReport.findUnique({ where: { id: reportId } })
+      if (!s || !report) return
+      const headline = event === "created" ? ":beetle: New bug" : event === "assigned" ? ":bust_in_silhouette: Bug assigned" : ":white_check_mark: Bug resolved"
+      await postToSlack(
+        s.webhookUrl,
+        slackMessage({
+          headline,
+          bug: `BUG-${report.number ?? ""}`,
+          title: report.title,
+          severity: report.severity,
+          url: `${appUrl()}/dashboard/reports/${report.id}`,
+          page: report.url,
+          extra,
+        }),
+      )
+    })().catch((e) => console.error(`Slack alert failed: ${e instanceof Error ? e.message : e}`))
     // Serverless can freeze right after the response, so wait (briefly) for Slack.
     await Promise.race([job, new Promise((r) => setTimeout(r, 5000))])
     background(job)

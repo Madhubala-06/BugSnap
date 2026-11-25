@@ -139,11 +139,7 @@ export interface GlobalStats {
   byStatus: Record<string, number>
 }
 
-export async function getBugReports(filters?: {
-  status?: ReportStatus
-  severity?: Severity
-  limit?: number
-}): Promise<BugReport[]> {
+export async function getBugReports(filters?: { status?: ReportStatus; severity?: Severity; limit?: number }): Promise<BugReport[]> {
   const params = new URLSearchParams()
   if (filters?.status) params.append("status", filters.status)
   if (filters?.severity) params.append("severity", filters.severity)
@@ -200,20 +196,23 @@ export async function updateBugReportStatus(id: string, status: ReportStatus): P
   return response.json()
 }
 
-export async function updateBugReport(id: string, data: {
-  title?: string
-  description?: string
-  stepsToReproduce?: string[]
-  expectedResult?: string
-  actualResult?: string
-  severity?: Severity
-  screenshotUrls?: string[]
-  status?: ReportStatus
-  priority?: string
-  labels?: string[]
-  assigneeId?: string | null
-  projectId?: string | null
-}): Promise<BugReport> {
+export async function updateBugReport(
+  id: string,
+  data: {
+    title?: string
+    description?: string
+    stepsToReproduce?: string[]
+    expectedResult?: string
+    actualResult?: string
+    severity?: Severity
+    screenshotUrls?: string[]
+    status?: ReportStatus
+    priority?: string
+    labels?: string[]
+    assigneeId?: string | null
+    projectId?: string | null
+  },
+): Promise<BugReport> {
   const response = await authFetch(`${API_URL}/reports/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -305,7 +304,7 @@ export async function saveGithubRepo(repo: string): Promise<{ githubRepo: string
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ repo }),
     }),
-    "Could not save the repository"
+    "Could not save the repository",
   )
 }
 
@@ -325,7 +324,7 @@ export async function listApiKeys(): Promise<ApiKey[]> {
 export async function createApiKey(name: string): Promise<ApiKey> {
   return json(
     await authFetch(`${API_URL}/api-keys`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }),
-    "Could not create a key"
+    "Could not create a key",
   )
 }
 
@@ -375,7 +374,7 @@ export const listProjects = async (): Promise<Project[]> => json(await authFetch
 export async function createProject(name: string, hosts: string[]): Promise<Project> {
   return json(
     await authFetch(`${API_URL}/projects`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, hosts }) }),
-    "Could not create the project"
+    "Could not create the project",
   )
 }
 
@@ -384,49 +383,82 @@ export const getActivity = async (id: string): Promise<ActivityItem[]> => json(a
 export async function addComment(id: string, body: string) {
   return json<{ id: string; body: string; createdAt: string; author: Member }>(
     await authFetch(`${API_URL}/reports/${id}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) }),
-    "Could not post the comment"
+    "Could not post the comment",
   )
 }
 
 export async function bulkUpdate(ids: string[], changes: Record<string, unknown>): Promise<{ updated: number }> {
   return json(
     await authFetch(`${API_URL}/reports/bulk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, changes }) }),
-    "Could not update the reports"
+    "Could not update the reports",
   )
 }
 
 // ---------- teams ----------
 
-export interface TeamMember { id: string; name: string; email: string; role: Role; joinedAt: string }
-export interface PendingInvite { id: string; email: string; role: Role; invitedBy: string; createdAt: string; expiresAt: string }
+export interface TeamMember {
+  id: string
+  name: string
+  email: string
+  role: Role
+  joinedAt: string
+}
+export interface PendingInvite {
+  id: string
+  email: string
+  role: Role
+  invitedBy: string
+  createdAt: string
+  expiresAt: string
+}
 
 export const getTeam = async (): Promise<{ you: { id: string; role: Role }; members: TeamMember[]; invites: PendingInvite[] }> =>
   json(await authFetch(`${API_URL}/workspace/team`), "Could not load the team")
 
 export async function inviteMembers(emails: string, role: Role) {
   return json<{ results: { email: string; status: "invited" | "already_member"; url?: string }[] }>(
-    await authFetch(`${API_URL}/workspace/invites`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emails, role }) }),
-    "Could not send the invites"
+    await authFetch(`${API_URL}/workspace/invites`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails, role }),
+    }),
+    "Could not send the invites",
   )
 }
 
 export const revokeInvite = async (id: string) => json(await authFetch(`${API_URL}/workspace/invites/${id}`, { method: "DELETE" }), "Could not revoke")
 
 export const setMemberRole = async (userId: string, role: Role) =>
-  json(await authFetch(`${API_URL}/workspace/members/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) }), "Could not change the role")
+  json(
+    await authFetch(`${API_URL}/workspace/members/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    }),
+    "Could not change the role",
+  )
 
 export const removeMember = async (userId: string) => json(await authFetch(`${API_URL}/workspace/members/${userId}`, { method: "DELETE" }), "Could not remove")
 
 export const createWorkspace = async (name: string): Promise<{ id: string; name: string }> =>
-  json(await authFetch(`${API_URL}/workspaces`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }), "Could not create the workspace")
+  json(
+    await authFetch(`${API_URL}/workspaces`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }),
+    "Could not create the workspace",
+  )
 
 export const switchWorkspace = async (id: string) => json(await authFetch(`${API_URL}/workspaces/${id}/switch`, { method: "POST" }), "Could not switch")
 
 export const renameWorkspace = async (name: string) =>
-  json(await authFetch(`${API_URL}/workspace`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }), "Could not rename")
+  json(
+    await authFetch(`${API_URL}/workspace`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }),
+    "Could not rename",
+  )
 
 export const updateProfile = async (body: { name?: string; notifyEmail?: boolean }) =>
-  json(await authFetch(`${API_URL}/auth/profile`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), "Could not save")
+  json(
+    await authFetch(`${API_URL}/auth/profile`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+    "Could not save",
+  )
 
 export async function previewInvite(token: string): Promise<{ workspace: string; email: string; role: Role; invitedBy: string }> {
   return json(await fetch(`${API_URL}/invites/${encodeURIComponent(token)}`), "This invite is not valid")
@@ -438,7 +470,7 @@ export const acceptInvite = async (token: string): Promise<{ ok: boolean; worksp
 export async function updateProject(id: string, body: { name?: string; hosts?: string[]; color?: string }): Promise<Project> {
   return json(
     await authFetch(`${API_URL}/projects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
-    "Could not save the project"
+    "Could not save the project",
   )
 }
 
@@ -449,7 +481,7 @@ export async function deleteProject(id: string) {
 export async function configureWidget(id: string, body: { enabled?: boolean; config?: Partial<WidgetConfig>; rotateKey?: boolean }) {
   return json<{ id: string; widgetKey: string; widgetEnabled: boolean; widgetConfig: WidgetConfig; hosts: string[] }>(
     await authFetch(`${API_URL}/projects/${id}/widget`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
-    "Could not update the widget"
+    "Could not update the widget",
   )
 }
 
@@ -486,19 +518,20 @@ export const getIntegrations = async (): Promise<IntegrationsState> => json(awai
 
 export const githubInstallUrl = async (): Promise<{ url: string }> => json(await authFetch(`${API_URL}/integrations/github/install`), "GitHub is not available")
 
-export const githubRepos = async (): Promise<{ fullName: string; private: boolean }[]> => json(await authFetch(`${API_URL}/integrations/github/repos`), "Could not load repositories")
+export const githubRepos = async (): Promise<{ fullName: string; private: boolean }[]> =>
+  json(await authFetch(`${API_URL}/integrations/github/repos`), "Could not load repositories")
 
 export async function connectIntegration(provider: Provider, body: Record<string, unknown>): Promise<IntegrationsState> {
   return json(
     await authFetch(`${API_URL}/integrations/${provider}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
-    `Could not connect ${provider}`
+    `Could not connect ${provider}`,
   )
 }
 
 export async function updateIntegration(provider: Provider, body: Record<string, unknown>) {
   return json(
     await authFetch(`${API_URL}/integrations/${provider}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
-    "Could not save"
+    "Could not save",
   )
 }
 
@@ -507,8 +540,12 @@ export const disconnectIntegration = async (provider: Provider) =>
 
 export async function createExternalIssue(reportId: string, provider: Provider, target?: string): Promise<ReportLink> {
   return json(
-    await authFetch(`${API_URL}/reports/${reportId}/issues`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, target }) }),
-    `Could not create the ${provider} issue`
+    await authFetch(`${API_URL}/reports/${reportId}/issues`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider, target }),
+    }),
+    `Could not create the ${provider} issue`,
   )
 }
 

@@ -10,8 +10,8 @@ export default function TermsPage() {
       <p>By using BugSnap you agree to these terms. They are short on purpose.</p>
       <h2>The service</h2>
       <p>
-        BugSnap is offered free, as is, while it is in early access. Features and limits (such as the monthly free AI write-ups) may change. We
-        try to keep it running, but we cannot promise it will always be available or error free.
+        BugSnap is offered free, as is, while it is in early access. Features and limits (such as the monthly free AI write-ups) may change. We try to keep it
+        running, but we cannot promise it will always be available or error free.
       </p>
       <h2>Your content</h2>
       <p>

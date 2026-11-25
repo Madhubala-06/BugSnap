@@ -14,7 +14,7 @@ const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mailer: Mailer
+    private readonly mailer: Mailer,
   ) {}
 
   async requestCode(rawEmail: unknown) {
@@ -56,11 +56,20 @@ export class AuthService {
 
     let user = await this.prisma.user.findUnique({ where: { email }, include: { workspace: true } })
     if (!user) {
-      const name = email.split("@")[0].split("+")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      const name = email
+        .split("@")[0]
+        .split("+")[0]
+        .replace(/[._-]+/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase())
       const workspace = await this.prisma.workspace.create({
         data: {
           name: `${name}'s workspace`,
-          slug: `${email.split("@")[0].replace(/[^a-z0-9]/g, "").slice(0, 20) || "ws"}-${randomToken().slice(0, 6).toLowerCase()}`,
+          slug: `${
+            email
+              .split("@")[0]
+              .replace(/[^a-z0-9]/g, "")
+              .slice(0, 20) || "ws"
+          }-${randomToken().slice(0, 6).toLowerCase()}`,
           users: { create: { email, name } },
         },
         include: { users: true },
@@ -174,7 +183,10 @@ export class AuthService {
       name: user.name,
       notifyEmail: user.notifyEmail,
       role: auth.role,
-      isOps: (process.env.OPS_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).includes(user.email.toLowerCase()),
+      isOps: (process.env.OPS_EMAILS || "")
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .includes(user.email.toLowerCase()),
       workspace: { id: auth.workspaceId, name: current?.workspace.name ?? "Workspace", members: current?.workspace._count.members ?? 1 },
       workspaces: memberships.map((m) => ({ id: m.workspace.id, name: m.workspace.name, role: m.role, members: m.workspace._count.members })),
     }

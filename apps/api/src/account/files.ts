@@ -9,7 +9,10 @@ export async function deleteWorkspaceFiles(workspaceId: string) {
   do {
     const page = await list({ prefix: `w/${workspaceId}/`, cursor, limit: 1000, token })
     if (page.blobs.length) {
-      await del(page.blobs.map((b) => b.url), { token })
+      await del(
+        page.blobs.map((b) => b.url),
+        { token },
+      )
       removed += page.blobs.length
     }
     cursor = page.hasMore ? page.cursor : undefined

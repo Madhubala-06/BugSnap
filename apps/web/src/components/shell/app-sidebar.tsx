@@ -3,7 +3,25 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Activity, Blocks, Bot, Bug, Check, ChevronDown, Inbox, LayoutGrid, LogOut, Moon, Plus, Puzzle, Settings, Sun, User, UserPlus, Users } from "lucide-react"
+import {
+  Activity,
+  Blocks,
+  Bot,
+  Bug,
+  Check,
+  ChevronDown,
+  Inbox,
+  LayoutGrid,
+  LogOut,
+  Moon,
+  Plus,
+  Puzzle,
+  Settings,
+  Sun,
+  User,
+  UserPlus,
+  Users,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMe } from "@/components/auth-gate"
 import { useTheme } from "@/components/theme-provider"
@@ -20,13 +38,27 @@ import { useWorkspace } from "./workspace-data"
 
 const OPEN = ["OPEN", "IN_PROGRESS", "FIX_READY"]
 
-function NavLink({ href, icon, label, count, active, hot }: { href: string; icon: React.ReactNode; label: string; count?: number; active: boolean; hot?: boolean }) {
+function NavLink({
+  href,
+  icon,
+  label,
+  count,
+  active,
+  hot,
+}: {
+  href: string
+  icon: React.ReactNode
+  label: string
+  count?: number
+  active: boolean
+  hot?: boolean
+}) {
   return (
     <Link
       href={href}
       className={cn(
         "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13.5px] transition-colors",
-        active ? "bg-background-tertiary text-foreground [&_svg]:text-primary" : "text-foreground-secondary hover:bg-background-tertiary hover:text-foreground"
+        active ? "bg-background-tertiary text-foreground [&_svg]:text-primary" : "text-foreground-secondary hover:bg-background-tertiary hover:text-foreground",
       )}
     >
       {icon}
@@ -50,9 +82,14 @@ export function AppSidebar() {
   const [wsName, setWsName] = useState("")
 
   useEffect(() => {
-    const refresh = () => getBugReports({ limit: 500 }).then(setReports).catch(() => undefined)
+    const refresh = () =>
+      getBugReports({ limit: 500 })
+        .then(setReports)
+        .catch(() => undefined)
     refresh()
-    getAiStatus().then(setAi).catch(() => undefined)
+    getAiStatus()
+      .then(setAi)
+      .catch(() => undefined)
     window.addEventListener("bugsnap:reports-changed", refresh)
     return () => window.removeEventListener("bugsnap:reports-changed", refresh)
   }, [pathname])
@@ -72,7 +109,9 @@ export function AppSidebar() {
           <img src="/logo.png" alt="" width={26} height={26} className="rounded-[7px] shadow-[0_0_16px_-4px_rgba(59,130,246,.8)]" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13.5px] font-semibold leading-tight text-foreground">{me?.workspace.name ?? "Workspace"}</span>
-            <span className="block text-[11.5px] text-foreground-muted">{me?.workspace.members ?? 1} {me?.workspace.members === 1 ? "member" : "members"} · {me?.role}</span>
+            <span className="block text-[11.5px] text-foreground-muted">
+              {me?.workspace.members ?? 1} {me?.workspace.members === 1 ? "member" : "members"} · {me?.role}
+            </span>
           </span>
           <ChevronDown className="h-4 w-4 text-foreground-muted" />
         </MenuTrigger>
@@ -87,24 +126,38 @@ export function AppSidebar() {
                 window.location.href = "/dashboard"
               }}
             >
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-primary/15 text-[10px] font-semibold text-primary">{w.name.charAt(0).toUpperCase()}</span>
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-primary/15 text-[10px] font-semibold text-primary">
+                {w.name.charAt(0).toUpperCase()}
+              </span>
               <span className="min-w-0 flex-1 truncate">{w.name}</span>
               {w.id === me?.workspace.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <span className="text-[11px] text-foreground-muted">{w.role}</span>}
             </MenuItem>
           ))}
-          <MenuItem onSelect={() => setNewWs(true)}><Plus className="h-4 w-4" />New workspace</MenuItem>
+          <MenuItem onSelect={() => setNewWs(true)}>
+            <Plus className="h-4 w-4" />
+            New workspace
+          </MenuItem>
           <MenuSeparator />
           {can(me, "admin") && (
             <MenuItem asChild>
-              <Link href="/dashboard/team?invite=1"><UserPlus className="h-4 w-4" />Invite people</Link>
+              <Link href="/dashboard/team?invite=1">
+                <UserPlus className="h-4 w-4" />
+                Invite people
+              </Link>
             </MenuItem>
           )}
           <MenuItem asChild>
-            <Link href="/dashboard/settings"><Settings className="h-4 w-4" />Settings</Link>
+            <Link href="/dashboard/settings">
+              <Settings className="h-4 w-4" />
+              Settings
+            </Link>
           </MenuItem>
           <MenuSeparator />
           <MenuLabel>{me?.email}</MenuLabel>
-          <MenuItem onSelect={() => signOut()}><LogOut className="h-4 w-4" />Sign out</MenuItem>
+          <MenuItem onSelect={() => signOut()}>
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </MenuItem>
         </MenuContent>
       </Menu>
 
@@ -123,27 +176,49 @@ export function AppSidebar() {
             }}
           >
             <Input autoFocus value={wsName} onChange={(e) => setWsName(e.target.value)} placeholder="Acme Inc" />
-            <Button type="submit" disabled={!wsName.trim()}>Create</Button>
+            <Button type="submit" disabled={!wsName.trim()}>
+              Create
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-px overflow-auto px-2.5" aria-label="Main">
         <NavLink href="/dashboard" icon={<LayoutGrid className={icon} />} label="Home" active={pathname === "/dashboard"} />
-        <NavLink href="/dashboard/reports?view=inbox" icon={<Inbox className={icon} />} label="Inbox" count={inbox} hot active={onReports && view === "inbox"} />
+        <NavLink
+          href="/dashboard/reports?view=inbox"
+          icon={<Inbox className={icon} />}
+          label="Inbox"
+          count={inbox}
+          hot
+          active={onReports && view === "inbox"}
+        />
         <NavLink href="/dashboard/reports?view=mine" icon={<User className={icon} />} label="My bugs" count={mine} active={onReports && view === "mine"} />
-        <NavLink href="/dashboard/reports?view=all" icon={<Bug className={icon} />} label="All reports" count={reports.length} active={onReports && view === "all" && !project} />
+        <NavLink
+          href="/dashboard/reports?view=all"
+          icon={<Bug className={icon} />}
+          label="All reports"
+          count={reports.length}
+          active={onReports && view === "all" && !project}
+        />
 
         <div className="mt-4 flex items-center justify-between px-2 pb-1 text-[11px] font-medium text-foreground-muted">
           Projects
           <Tip label="New project">
-            <button onClick={() => setNewProjectOpen(true)} className="rounded p-0.5 hover:bg-background-tertiary hover:text-foreground" aria-label="New project">
+            <button
+              onClick={() => setNewProjectOpen(true)}
+              className="rounded p-0.5 hover:bg-background-tertiary hover:text-foreground"
+              aria-label="New project"
+            >
               <Plus className="h-3.5 w-3.5" />
             </button>
           </Tip>
         </div>
         {projects.length === 0 ? (
-          <button onClick={() => setNewProjectOpen(true)} className="rounded-md px-2 py-1.5 text-left text-[12.5px] text-foreground-muted hover:bg-background-tertiary hover:text-foreground-secondary">
+          <button
+            onClick={() => setNewProjectOpen(true)}
+            className="rounded-md px-2 py-1.5 text-left text-[12.5px] text-foreground-muted hover:bg-background-tertiary hover:text-foreground-secondary"
+          >
             Group bugs by website →
           </button>
         ) : (
@@ -160,7 +235,13 @@ export function AppSidebar() {
         )}
 
         <div className="mt-4 px-2 pb-1 text-[11px] font-medium text-foreground-muted">Workspace</div>
-        <NavLink href="/dashboard/team" icon={<Users className={icon} />} label="Team" count={me?.workspace.members && me.workspace.members > 1 ? me.workspace.members : undefined} active={pathname === "/dashboard/team"} />
+        <NavLink
+          href="/dashboard/team"
+          icon={<Users className={icon} />}
+          label="Team"
+          count={me?.workspace.members && me.workspace.members > 1 ? me.workspace.members : undefined}
+          active={pathname === "/dashboard/team"}
+        />
         <NavLink href="/dashboard/integrations" icon={<Blocks className={icon} />} label="Integrations" active={pathname === "/dashboard/integrations"} />
         {me?.isOps && <NavLink href="/dashboard/ops" icon={<Activity className={icon} />} label="Errors (team)" active={pathname === "/dashboard/ops"} />}
         <NavLink href="/dashboard/settings#extension" icon={<Puzzle className={icon} />} label="Chrome extension" active={false} />
@@ -173,10 +254,15 @@ export function AppSidebar() {
           <Link href="/dashboard/settings" className="mb-3 block rounded-md p-1 hover:bg-background-tertiary">
             <span className="flex justify-between text-[11.5px] text-foreground-muted">
               <span>Free AI write-ups</span>
-              <span className="font-mono">{ai.sharedUsed} / {ai.sharedLimit}</span>
+              <span className="font-mono">
+                {ai.sharedUsed} / {ai.sharedLimit}
+              </span>
             </span>
             <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-border">
-              <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (ai.sharedUsed / Math.max(1, ai.sharedLimit)) * 100)}%` }} />
+              <span
+                className="block h-full rounded-full bg-primary"
+                style={{ width: `${Math.min(100, (ai.sharedUsed / Math.max(1, ai.sharedLimit)) * 100)}%` }}
+              />
             </span>
           </Link>
         )}

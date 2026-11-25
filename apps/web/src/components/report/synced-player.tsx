@@ -160,7 +160,7 @@ export function SyncedPlayer({ src }: { src: string }) {
               title={m.log.message}
               className={cn(
                 "absolute top-[2px] h-1.5 w-1.5 -translate-x-1/2 rounded-full ring-2 ring-background-secondary",
-                m.kind === "error" ? "bg-red-400" : m.kind === "click" ? "bg-sky-400" : "bg-foreground-muted"
+                m.kind === "error" ? "bg-red-400" : m.kind === "click" ? "bg-sky-400" : "bg-foreground-muted",
               )}
               style={{ left: `${pct(m.t)}%` }}
             />
@@ -189,7 +189,8 @@ const LABEL: Record<TimedEvent["kind"], string> = { error: "error", click: "clic
 export function EventList({ events, empty }: { events: TimedEvent[]; empty?: string }) {
   const { time, seek, duration } = usePlayer()
   const [open, setOpen] = useState<number | null>(null)
-  if (!events.length) return <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-foreground-muted">{empty ?? "Nothing captured."}</p>
+  if (!events.length)
+    return <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-foreground-muted">{empty ?? "Nothing captured."}</p>
   return (
     <div className="overflow-hidden rounded-xl border border-border">
       {events.map((e, i) => {
@@ -199,11 +200,19 @@ export function EventList({ events, empty }: { events: TimedEvent[]; empty?: str
           typeof data.selector === "string" ? `selector: ${data.selector}` : "",
           typeof data.responseBody === "string" ? `response: ${data.responseBody}` : "",
           typeof data.stack === "string" ? data.stack : "",
-        ].filter(Boolean).join("\n")
+        ]
+          .filter(Boolean)
+          .join("\n")
         const side =
-          e.kind === "network" || (e.log.type === "NETWORK")
-            ? typeof data.duration === "number" ? `${data.duration}ms` : ""
-            : e.kind === "input" ? "value not recorded" : typeof data.selector === "string" ? data.selector : ""
+          e.kind === "network" || e.log.type === "NETWORK"
+            ? typeof data.duration === "number"
+              ? `${data.duration}ms`
+              : ""
+            : e.kind === "input"
+              ? "value not recorded"
+              : typeof data.selector === "string"
+                ? data.selector
+                : ""
         return (
           <div key={i} className={cn("border-b border-border last:border-0", now && "bg-primary/10 shadow-[inset_2px_0_0_hsl(var(--primary))]")}>
             <button
@@ -218,13 +227,24 @@ export function EventList({ events, empty }: { events: TimedEvent[]; empty?: str
                 {ICON[e.kind]}
                 {e.log.type === "NETWORK" ? "network" : LABEL[e.kind]}
               </span>
-              <span className={cn("truncate", e.kind === "error" ? "font-mono text-red-400" : e.log.type === "NETWORK" || e.log.type === "CONSOLE" ? "font-mono text-foreground-secondary" : "text-foreground")}>
+              <span
+                className={cn(
+                  "truncate",
+                  e.kind === "error"
+                    ? "font-mono text-red-400"
+                    : e.log.type === "NETWORK" || e.log.type === "CONSOLE"
+                      ? "font-mono text-foreground-secondary"
+                      : "text-foreground",
+                )}
+              >
                 {e.log.message}
               </span>
               <span className="max-w-[180px] truncate font-mono text-[11px] text-foreground-muted">{side}</span>
             </button>
             {open === i && detail && (
-              <pre className="mx-3 mb-2 whitespace-pre-wrap break-words rounded-md bg-background-secondary p-2.5 font-mono text-[11.5px] text-foreground-secondary">{detail}</pre>
+              <pre className="mx-3 mb-2 whitespace-pre-wrap break-words rounded-md bg-background-secondary p-2.5 font-mono text-[11.5px] text-foreground-secondary">
+                {detail}
+              </pre>
             )}
           </div>
         )

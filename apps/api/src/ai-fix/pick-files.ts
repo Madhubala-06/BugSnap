@@ -1,5 +1,6 @@
 /** Choose which repo files the AI should see for a bug: files named in stacks/URLs first, then path words. */
-const SKIP = /(^|\/)(node_modules|dist|build|out|coverage|\.next|vendor|\.git)\/|\.min\.|\.map$|lock(\.json|\.yaml)?$|\.lock$|\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf|mp4|webm|pdf|zip)$/i
+const SKIP =
+  /(^|\/)(node_modules|dist|build|out|coverage|\.next|vendor|\.git)\/|\.min\.|\.map$|lock(\.json|\.yaml)?$|\.lock$|\.(png|jpe?g|gif|svg|ico|webp|woff2?|ttf|mp4|webm|pdf|zip)$/i
 const CODE = /\.(m?[jt]sx?|cjs|vue|svelte|astro|html?|css|scss|py|rb|go|java|kt|php|cs|rs|swift)$/i
 
 export function bugHints(texts: string[]): { names: string[]; words: string[] } {
@@ -60,7 +61,8 @@ export interface Edit {
 export function applyEdits(files: Record<string, string>, edits: Edit[]): { ok: true; changed: Record<string, string> } | { ok: false; error: string } {
   const changed: Record<string, string> = {}
   for (const e of edits) {
-    if (typeof e?.path !== "string" || typeof e.find !== "string" || typeof e.replace !== "string" || !e.find) return { ok: false, error: "An edit was incomplete" }
+    if (typeof e?.path !== "string" || typeof e.find !== "string" || typeof e.replace !== "string" || !e.find)
+      return { ok: false, error: "An edit was incomplete" }
     const current = changed[e.path] ?? files[e.path]
     if (current == null) return { ok: false, error: `The AI tried to edit ${e.path}, which it was not shown` }
     const n = current.split(e.find).length - 1

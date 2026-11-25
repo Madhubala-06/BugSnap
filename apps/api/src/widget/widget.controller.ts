@@ -1,4 +1,20 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Header, HttpCode, HttpException, HttpStatus, NotFoundException, Param, Post, Query, Req, Res } from "@nestjs/common"
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Header,
+  HttpCode,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+} from "@nestjs/common"
 import type { Request, Response } from "express"
 import * as fs from "fs"
 import * as path from "path"
@@ -49,7 +65,7 @@ export class WidgetController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reports: ReportsService,
-    private readonly storage: StorageService
+    private readonly storage: StorageService,
   ) {}
 
   // ---------- for the dashboard ----------
@@ -68,7 +84,13 @@ export class WidgetController {
         widgetConfig: cleanConfig(body?.config, cleanConfig(project.widgetConfig)) as object,
       },
     })
-    return { id: updated.id, widgetKey: updated.widgetKey, widgetEnabled: updated.widgetEnabled, widgetConfig: cleanConfig(updated.widgetConfig), hosts: updated.hosts }
+    return {
+      id: updated.id,
+      widgetKey: updated.widgetKey,
+      widgetEnabled: updated.widgetEnabled,
+      widgetConfig: cleanConfig(updated.widgetConfig),
+      hosts: updated.hosts,
+    }
   }
 
   // ---------- public, used by the script on customer websites ----------
@@ -109,11 +131,15 @@ export class WidgetController {
     }
 
     // Rate limits: per visitor (IP + browser) and per project.
-    const ip = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "").split(",")[0].trim()
+    const ip = String(req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "")
+      .split(",")[0]
+      .trim()
     const visitor = sha256(`${ip}|${req.headers["user-agent"] ?? ""}|${project.id}`).slice(0, 24)
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000)
     const [mine, total] = await Promise.all([
-      this.prisma.activity.count({ where: { kind: "created", createdAt: { gt: hourAgo }, report: { projectId: project.id }, data: { path: ["visitor"], equals: visitor } } }),
+      this.prisma.activity.count({
+        where: { kind: "created", createdAt: { gt: hourAgo }, report: { projectId: project.id }, data: { path: ["visitor"], equals: visitor } },
+      }),
       this.prisma.bugReport.count({ where: { projectId: project.id, createdAt: { gt: hourAgo } } }),
     ])
     if (mine >= MAX_PER_HOUR_PER_VISITOR || total >= MAX_PER_HOUR_PER_PROJECT) {
@@ -154,10 +180,13 @@ export class WidgetController {
         },
         analyze: true,
         userNote: description,
-      }
+      },
     )
     // Remember who sent it (hashed) for the rate limit.
-    await this.prisma.activity.updateMany({ where: { reportId: report.id, kind: "created" }, data: { data: { source: "widget", visitor, ...(email ? { email } : {}) } } })
+    await this.prisma.activity.updateMany({
+      where: { reportId: report.id, kind: "created" },
+      data: { data: { source: "widget", visitor, ...(email ? { email } : {}) } },
+    })
     return { ok: true, id: report.id, number: report.number }
   }
 

@@ -73,41 +73,41 @@
 
   .dark {
     /* BugSnap dark palette: neutral black with one blue accent */
-    --background: 240 5% 4%;            /* #0A0A0B */
-    --background-secondary: 240 6% 7%;  /* #111113 */
-    --background-tertiary: 240 5% 10%;  /* #18181B */
+    --background: 240 5% 4%; /* #0A0A0B */
+    --background-secondary: 240 6% 7%; /* #111113 */
+    --background-tertiary: 240 5% 10%; /* #18181B */
 
-    --foreground: 240 7% 93%;           /* #EDEDEF */
+    --foreground: 240 7% 93%; /* #EDEDEF */
     --foreground-secondary: 240 4% 56%; /* #8B8B93 */
-    --foreground-muted: 240 4% 38%;     /* #5C5C64 */
+    --foreground-muted: 240 4% 38%; /* #5C5C64 */
 
-    --card: 240 5% 8%;                  /* #141416 */
+    --card: 240 5% 8%; /* #141416 */
     --card-foreground: 240 7% 93%;
 
-    --primary: 217 91% 60%;             /* #3B82F6 */
-    --primary-hover: 213 94% 68%;       /* #60A5FA */
+    --primary: 217 91% 60%; /* #3B82F6 */
+    --primary-hover: 213 94% 68%; /* #60A5FA */
     --primary-foreground: 0 0% 100%;
     --primary-muted: 217 55% 13%;
 
-    --accent: 213 97% 78%;              /* #93C5FD */
+    --accent: 213 97% 78%; /* #93C5FD */
     --accent-hover: 213 97% 85%;
     --accent-foreground: 240 5% 4%;
     --accent-muted: 217 45% 14%;
 
-    --success: 142 69% 58%;             /* #4ADE80 */
+    --success: 142 69% 58%; /* #4ADE80 */
     --success-foreground: 240 5% 4%;
     --success-muted: 142 45% 11%;
 
-    --destructive: 0 91% 71%;           /* #F87171 */
+    --destructive: 0 91% 71%; /* #F87171 */
     --destructive-foreground: 0 0% 100%;
     --destructive-muted: 0 45% 13%;
 
-    --warning: 43 96% 56%;              /* #FBBF24 */
+    --warning: 43 96% 56%; /* #FBBF24 */
     --warning-foreground: 240 5% 4%;
     --warning-muted: 43 45% 12%;
 
-    --border: 240 5% 15%;               /* #232327 */
-    --border-hover: 240 5% 19%;         /* #2E2E33 */
+    --border: 240 5% 15%; /* #232327 */
+    --border-hover: 240 5% 19%; /* #2E2E33 */
     --input: 240 5% 15%;
     --ring: 217 91% 60%;
 
@@ -164,7 +164,8 @@
   @apply mb-3 text-foreground-secondary leading-relaxed;
 }
 
-.tiptap ul, .tiptap ol {
+.tiptap ul,
+.tiptap ol {
   @apply mb-3 pl-6 text-foreground-secondary;
 }
 

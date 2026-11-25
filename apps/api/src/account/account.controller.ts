@@ -18,7 +18,10 @@ export class AccountController {
       this.prisma.membership.findMany({ where: { userId: user.id }, include: { workspace: { select: { id: true, name: true, createdAt: true } } } }),
       this.prisma.bugReport.findMany({ where: { reporterId: user.id }, orderBy: { createdAt: "desc" } }),
       this.prisma.comment.findMany({ where: { authorId: user.id }, orderBy: { createdAt: "desc" } }),
-      this.prisma.apiKey.findMany({ where: { userId: user.id }, select: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true, revokedAt: true } }),
+      this.prisma.apiKey.findMany({
+        where: { userId: user.id },
+        select: { id: true, name: true, prefix: true, createdAt: true, lastUsedAt: true, revokedAt: true },
+      }),
     ])
     return {
       exportedAt: new Date().toISOString(),
@@ -50,7 +53,9 @@ export class AccountController {
     const shared = memberships.filter((m) => m.workspace.members.length > 1)
     const stuck = shared.filter((m) => m.role === "owner" && !m.workspace.members.some((x) => x.userId !== user.id && x.role === "owner"))
     if (stuck.length) {
-      throw new ConflictException(`Make someone else an owner of ${stuck.map((m) => `"${m.workspace.name}"`).join(", ")} first (Team page), or remove the other members.`)
+      throw new ConflictException(
+        `Make someone else an owner of ${stuck.map((m) => `"${m.workspace.name}"`).join(", ")} first (Team page), or remove the other members.`,
+      )
     }
     const sharedIds = shared.map((m) => m.workspace.id)
 

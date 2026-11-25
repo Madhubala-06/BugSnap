@@ -17,7 +17,7 @@ export function MenuContent({ className, align = "start", sideOffset = 6, ...pro
         className={cn(
           "z-50 min-w-[200px] overflow-hidden rounded-lg border border-border bg-card p-1 text-sm text-foreground shadow-[0_16px_48px_-12px_rgba(0,0,0,.55)]",
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          className
+          className,
         )}
         {...props}
       />
@@ -32,7 +32,7 @@ export function MenuItem({ className, inset, ...props }: DM.DropdownMenuItemProp
         "flex cursor-default select-none items-center gap-2.5 rounded-md px-2 py-1.5 text-foreground-secondary outline-none",
         "data-[highlighted]:bg-background-tertiary data-[highlighted]:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
         inset && "pl-8",
-        className
+        className,
       )}
       {...props}
     />

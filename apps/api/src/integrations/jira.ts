@@ -34,9 +34,10 @@ export async function jiraProjects(c: JiraCreds) {
 
 /** Plain text to Atlassian Document Format, one paragraph per line. */
 function adf(text: string) {
-  const paragraphs = text.split("\n").slice(0, 300).map((line) =>
-    line.trim() ? { type: "paragraph", content: [{ type: "text", text: line.slice(0, 2000) }] } : { type: "paragraph", content: [] }
-  )
+  const paragraphs = text
+    .split("\n")
+    .slice(0, 300)
+    .map((line) => (line.trim() ? { type: "paragraph", content: [{ type: "text", text: line.slice(0, 2000) }] } : { type: "paragraph", content: [] }))
   return { type: "doc", version: 1, content: paragraphs }
 }
 
@@ -44,7 +45,9 @@ export async function jiraCreateIssue(c: JiraCreds, projectKey: string, summary:
   const make = (issuetype: string) =>
     jira<{ key: string }>(c, "/rest/api/3/issue", {
       method: "POST",
-      body: JSON.stringify({ fields: { project: { key: projectKey }, summary: summary.slice(0, 250), description: adf(description), issuetype: { name: issuetype } } }),
+      body: JSON.stringify({
+        fields: { project: { key: projectKey }, summary: summary.slice(0, 250), description: adf(description), issuetype: { name: issuetype } },
+      }),
     })
   // Not every project has a "Bug" type; fall back to "Task".
   const issue = await make("Bug").catch(() => make("Task"))

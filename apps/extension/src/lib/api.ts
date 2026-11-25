@@ -1,10 +1,7 @@
 import type { SessionLog } from "./types"
 import { getConfig } from "./storage"
 
-export async function createSession(
-  userId: string,
-  metadata: Record<string, unknown>
-): Promise<{ id: string }> {
+export async function createSession(userId: string, metadata: Record<string, unknown>): Promise<{ id: string }> {
   const { apiUrl } = await getConfig()
   const response = await fetch(`${apiUrl}/sessions`, {
     method: "POST",
@@ -15,10 +12,7 @@ export async function createSession(
   return response.json()
 }
 
-export async function uploadLogs(
-  sessionId: string,
-  logs: SessionLog[]
-): Promise<void> {
+export async function uploadLogs(sessionId: string, logs: SessionLog[]): Promise<void> {
   const { apiUrl } = await getConfig()
   const response = await fetch(`${apiUrl}/sessions/${sessionId}/logs/batch`, {
     method: "POST",
@@ -28,10 +22,7 @@ export async function uploadLogs(
   if (!response.ok) throw new Error("Failed to upload logs")
 }
 
-export async function uploadRecording(
-  sessionId: string,
-  blob: Blob
-): Promise<{ url: string }> {
+export async function uploadRecording(sessionId: string, blob: Blob): Promise<{ url: string }> {
   const { apiUrl } = await getConfig()
 
   // First upload the file
@@ -61,10 +52,7 @@ export async function uploadRecording(
   return { url }
 }
 
-export async function updateSessionStatus(
-  sessionId: string,
-  status: "RECORDING" | "PROCESSING" | "COMPLETED" | "FAILED"
-): Promise<void> {
+export async function updateSessionStatus(sessionId: string, status: "RECORDING" | "PROCESSING" | "COMPLETED" | "FAILED"): Promise<void> {
   const { apiUrl } = await getConfig()
   const response = await fetch(`${apiUrl}/sessions/${sessionId}/status`, {
     method: "PATCH",

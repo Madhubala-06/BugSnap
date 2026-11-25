@@ -60,11 +60,26 @@ test("install state is signed and expires", () => {
 
 test("issue body has steps, errors and a link back", () => {
   const { toIssueMarkdown } = require("../dist/reports/formats")
-  const md = toIssueMarkdown({
-    id: "r1", number: 7, title: "t", severity: "HIGH", status: "OPEN", createdAt: new Date(),
-    description: "<p>Pay hangs</p>", stepsToReproduce: ["Open cart", "Click Pay"], expectedResult: "works", actualResult: "spins",
-    browserInfo: { page: { url: "https://shop.test/cart" }, logs: [{ type: "CONSOLE", level: "ERROR", message: "TypeError: x", timestamp: new Date().toISOString(), data: { stack: "at a\nat b" } }], screenshotUrls: ["https://x/1.jpg"] },
-  }, "https://app.test")
+  const md = toIssueMarkdown(
+    {
+      id: "r1",
+      number: 7,
+      title: "t",
+      severity: "HIGH",
+      status: "OPEN",
+      createdAt: new Date(),
+      description: "<p>Pay hangs</p>",
+      stepsToReproduce: ["Open cart", "Click Pay"],
+      expectedResult: "works",
+      actualResult: "spins",
+      browserInfo: {
+        page: { url: "https://shop.test/cart" },
+        logs: [{ type: "CONSOLE", level: "ERROR", message: "TypeError: x", timestamp: new Date().toISOString(), data: { stack: "at a\nat b" } }],
+        screenshotUrls: ["https://x/1.jpg"],
+      },
+    },
+    "https://app.test",
+  )
   assert.match(md, /Pay hangs/)
   assert.match(md, /1\. Open cart/)
   assert.match(md, /TypeError: x/)
@@ -81,7 +96,14 @@ test("bug references are found in PR text", () => {
 
 test("regression test can target another build", () => {
   const { toPlaywrightTest } = require("../dist/reports/formats")
-  const spec = toPlaywrightTest({ id: "r", title: "t", severity: "LOW", status: "OPEN", createdAt: new Date(), browserInfo: { page: { url: "https://shop.test/cart?x=1" } } })
+  const spec = toPlaywrightTest({
+    id: "r",
+    title: "t",
+    severity: "LOW",
+    status: "OPEN",
+    createdAt: new Date(),
+    browserInfo: { page: { url: "https://shop.test/cart?x=1" } },
+  })
   assert.match(spec, /process\.env\.BUGSNAP_BASE_URL/)
   assert.match(spec, /page\.goto\(url\("https:\/\/shop\.test\/cart\?x=1"\)\)/)
 })

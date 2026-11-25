@@ -7,14 +7,7 @@ import Link from "next/link"
 import { Bug, Video, Clock, AlertTriangle, FileText } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  getRecordings,
-  getThumbnails,
-  getRecentBugReports,
-  getGlobalStats,
-  type BugReport,
-  type Severity,
-} from "@/lib/api"
+import { getRecordings, getThumbnails, getRecentBugReports, getGlobalStats, type BugReport, type Severity } from "@/lib/api"
 
 interface DashboardStats {
   totalReports: number
@@ -122,10 +115,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent Bug Reports</CardTitle>
-          <Link
-            href="/dashboard/reports"
-            className="text-sm text-primary hover:underline"
-          >
+          <Link href="/dashboard/reports" className="text-sm text-primary hover:underline">
             View all
           </Link>
         </CardHeader>
@@ -136,9 +126,7 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <FileText className="h-12 w-12 mx-auto text-foreground-muted mb-3" />
               <p className="text-foreground-secondary">No bug reports yet</p>
-              <p className="text-sm text-foreground-muted">
-                Record a bug using the extension to create your first report
-              </p>
+              <p className="text-sm text-foreground-muted">Record a bug using the extension to create your first report</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -150,9 +138,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div>
-                      <span className="text-sm font-mono text-foreground-muted">
-                        {bug.id.slice(0, 8)}
-                      </span>
+                      <span className="text-sm font-mono text-foreground-muted">{bug.id.slice(0, 8)}</span>
                       <h3 className="font-medium text-foreground">{bug.title}</h3>
                       <p className="text-sm text-foreground-secondary">
                         {bug.reporter?.name || "Anonymous"} &middot; {formatDate(bug.createdAt)}
@@ -160,12 +146,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={severityToVariant(bug.severity)}>
-                      {bug.severity.toLowerCase()}
-                    </Badge>
-                    <span className="text-sm text-foreground-secondary">
-                      {formatStatus(bug.status)}
-                    </span>
+                    <Badge variant={severityToVariant(bug.severity)}>{bug.severity.toLowerCase()}</Badge>
+                    <span className="text-sm text-foreground-secondary">{formatStatus(bug.status)}</span>
                   </div>
                 </Link>
               ))}

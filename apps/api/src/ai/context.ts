@@ -87,13 +87,12 @@ function short(text: string, max: number) {
 export function buildLogDigest(logs: CapturedLog[], startedAt?: string, maxLines = 80): string {
   if (!logs.length) return "No logs were captured."
   const start = Date.parse(startedAt ?? logs[0].timestamp) || Date.parse(logs[0].timestamp)
-  const important = (l: CapturedLog) =>
-    l.level === "ERROR" || l.level === "WARN" || l.type === "CLICK" || l.type === "NAVIGATION" || l.type === "INPUT"
+  const important = (l: CapturedLog) => l.level === "ERROR" || l.level === "WARN" || l.type === "CLICK" || l.type === "NAVIGATION" || l.type === "INPUT"
 
   // Drop noisy successful requests and plain console.log first.
   let picked = logs.filter(important)
   const rest = logs.filter((l) => !important(l))
-  picked = picked.concat(rest.slice(-(Math.max(0, maxLines - picked.length))))
+  picked = picked.concat(rest.slice(-Math.max(0, maxLines - picked.length)))
   if (picked.length > maxLines) {
     const errors = picked.filter((l) => l.level === "ERROR")
     const others = picked.filter((l) => l.level !== "ERROR")
@@ -202,7 +201,6 @@ export function fallbackSummary(logs: CapturedLog[], page?: PageContext): { desc
   return { description: parts.join(" "), steps }
 }
 
-
 /**
  * Same bug, same signature: the first real error, with ids, numbers and
  * query strings removed, plus the page path. Used to group duplicates.
@@ -229,5 +227,8 @@ export function errorSignature(logs: CapturedLog[], page?: PageContext): string 
   } catch {
     path = ""
   }
-  return createHash("sha1").update(`${first.type}|${clean(first.message)}|${path}`).digest("hex").slice(0, 16)
+  return createHash("sha1")
+    .update(`${first.type}|${clean(first.message)}|${path}`)
+    .digest("hex")
+    .slice(0, 16)
 }

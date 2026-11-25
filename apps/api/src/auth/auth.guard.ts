@@ -8,7 +8,7 @@ import { IS_PUBLIC, MIN_ROLE, ROLE_RANK, type Role } from "./public.decorator"
 export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly auth: AuthService
+    private readonly auth: AuthService,
   ) {}
 
   async canActivate(context: ExecutionContext) {
@@ -22,7 +22,9 @@ export class AuthGuard implements CanActivate {
     request.auth = auth
     const min = this.reflector.getAllAndOverride<Role>(MIN_ROLE, [context.getHandler(), context.getClass()]) ?? "guest"
     if (ROLE_RANK[auth.role] < ROLE_RANK[min]) {
-      throw new ForbiddenException(min === "admin" || min === "owner" ? "Only workspace admins can do this" : "Guests can view and comment, but not change this")
+      throw new ForbiddenException(
+        min === "admin" || min === "owner" ? "Only workspace admins can do this" : "Guests can view and comment, but not change this",
+      )
     }
     return true
   }

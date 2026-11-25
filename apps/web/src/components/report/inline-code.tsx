@@ -10,7 +10,7 @@ export function InlineCode({ text }: { text: string }) {
           </code>
         ) : (
           <span key={i}>{part}</span>
-        )
+        ),
       )}
     </>
   )

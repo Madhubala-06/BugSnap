@@ -9,7 +9,7 @@ import { Auth, type AuthContext } from "../auth/public.decorator"
 export class StorageController {
   constructor(
     private readonly storage: StorageService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {}
 
   /** Ask for a direct-upload token (production) or learn to use local upload (dev). */
@@ -64,8 +64,10 @@ export class StorageController {
     for (const r of reports) {
       const info = (r.browserInfo ?? {}) as { recordingUrl?: string; screenshotUrls?: string[] }
       const name = (u: string) => u.split("/").pop() || u
-      if (info.recordingUrl) recordings.push({ filename: name(info.recordingUrl), url: info.recordingUrl, size: 0, createdAt: r.createdAt, reportId: r.id, reportTitle: r.title })
-      for (const u of info.screenshotUrls ?? []) screenshots.push({ filename: name(u), url: u, size: 0, createdAt: r.createdAt, reportId: r.id, reportTitle: r.title })
+      if (info.recordingUrl)
+        recordings.push({ filename: name(info.recordingUrl), url: info.recordingUrl, size: 0, createdAt: r.createdAt, reportId: r.id, reportTitle: r.title })
+      for (const u of info.screenshotUrls ?? [])
+        screenshots.push({ filename: name(u), url: u, size: 0, createdAt: r.createdAt, reportId: r.id, reportTitle: r.title })
     }
     return { recordings, screenshots }
   }

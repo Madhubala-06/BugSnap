@@ -102,7 +102,7 @@ window.addEventListener(
       timestamp: now(),
     })
   },
-  true
+  true,
 )
 
 window.addEventListener("unhandledrejection", (event) => {

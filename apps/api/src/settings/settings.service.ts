@@ -29,7 +29,10 @@ export class SettingsService {
     if (!shared) return { key: null, reason: "No Gemini API key set. Add one in Settings to get an AI write-up." }
     const used = ws?.aiPeriod === currentPeriod() ? ws.aiUsed : 0
     if (used >= limit) {
-      return { key: null, reason: `You used all ${limit} AI write-ups of your plan this month. Add your own free Gemini key in Settings for unlimited write-ups.` }
+      return {
+        key: null,
+        reason: `You used all ${limit} AI write-ups of your plan this month. Add your own free Gemini key in Settings for unlimited write-ups.`,
+      }
     }
     return { key: shared, shared: true }
   }
@@ -81,7 +84,11 @@ export class SettingsService {
   async setGithubRepo(workspaceId: string, repo: unknown) {
     let value: string | null = null
     if (typeof repo === "string" && repo.trim()) {
-      const cleaned = repo.trim().replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/, "").replace(/\/+$/, "")
+      const cleaned = repo
+        .trim()
+        .replace(/^https?:\/\/github\.com\//i, "")
+        .replace(/\.git$/, "")
+        .replace(/\/+$/, "")
       if (!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(cleaned)) {
         throw new BadRequestException("Use the form owner/repo, for example acme/web-app")
       }

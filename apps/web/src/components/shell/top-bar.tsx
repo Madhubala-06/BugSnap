@@ -54,14 +54,26 @@ export function TopBar() {
         <DialogContent title="Record a bug" description="Bugs are recorded with the BugSnap Chrome extension, right on the page where they happen.">
           <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground-secondary">
             <li>Open the page with the bug in Chrome.</li>
-            <li>Click the BugSnap icon in the toolbar and press <b className="text-foreground">Start recording</b>.</li>
-            <li>Show the bug, then press <b className="text-foreground">Stop</b>. The report appears here with the video, errors and AI write-up.</li>
+            <li>
+              Click the BugSnap icon in the toolbar and press <b className="text-foreground">Start recording</b>.
+            </li>
+            <li>
+              Show the bug, then press <b className="text-foreground">Stop</b>. The report appears here with the video, errors and AI write-up.
+            </li>
           </ol>
           <div className="mt-5 flex justify-end gap-2">
-            <Link href="/dashboard/settings#extension" onClick={() => setRecordHelp(false)} className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-sm hover:bg-background-tertiary">
+            <Link
+              href="/dashboard/settings#extension"
+              onClick={() => setRecordHelp(false)}
+              className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-sm hover:bg-background-tertiary"
+            >
               Get the extension
             </Link>
-            <Link href="/r/demo" target="_blank" className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-hover">
+            <Link
+              href="/r/demo"
+              target="_blank"
+              className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
+            >
               See an example report
             </Link>
           </div>

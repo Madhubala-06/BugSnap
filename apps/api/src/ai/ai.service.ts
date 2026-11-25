@@ -119,18 +119,15 @@ export class AIService {
       i++
       for (let attempt = 0; attempt < 1; attempt++) {
         const left = deadline - Date.now()
-        if (left < 4_000) return { analysis: null, error: "The AI is busy right now. Use \"Generate AI write-up\" on the report to try again." }
+        if (left < 4_000) return { analysis: null, error: 'The AI is busy right now. Use "Generate AI write-up" on the report to try again.' }
         try {
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "x-goog-api-key": pick.key },
-              body,
-              // Background jobs can afford to wait for slower models.
-              signal: AbortSignal.timeout(Math.min(left, (input.budgetMs ?? 45_000) > 60_000 ? 70_000 : 25_000)),
-            }
-          )
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": pick.key },
+            body,
+            // Background jobs can afford to wait for slower models.
+            signal: AbortSignal.timeout(Math.min(left, (input.budgetMs ?? 45_000) > 60_000 ? 70_000 : 25_000)),
+          })
           if (response.ok) {
             const data = await response.json()
             const content: string | undefined = data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("")
@@ -152,7 +149,7 @@ export class AIService {
             break
           }
           if (response.status === 503 || response.status === 429 || response.status >= 500) {
-            lastError = "The AI is busy right now. Use \"Generate AI write-up\" on the report to try again."
+            lastError = 'The AI is busy right now. Use "Generate AI write-up" on the report to try again.'
             if (/quota|billing/i.test(text)) retired.add(model)
             continue
           }
@@ -171,7 +168,13 @@ export class AIService {
    * Ask Gemini for a JSON answer (text only), cycling through free models until the deadline,
    * like analyze(). Counts one shared write-up on success.
    */
-  async generateJson<T>(workspaceId: string, system: string, prompt: string, budgetMs = 90_000, maxOutputTokens = 8192): Promise<{ json: T; model: string } | { error: string }> {
+  async generateJson<T>(
+    workspaceId: string,
+    system: string,
+    prompt: string,
+    budgetMs = 90_000,
+    maxOutputTokens = 8192,
+  ): Promise<{ json: T; model: string } | { error: string }> {
     const pick = await this.settingsService.pickGeminiKey(workspaceId)
     if (pick.key === null) return { error: pick.reason }
     const body = JSON.stringify({
@@ -208,7 +211,8 @@ export class AIService {
           return { json, model }
         }
         const text = await response.text()
-        if ((response.status === 400 || response.status === 403) && /API key|permission|PERMISSION_DENIED/i.test(text)) return { error: "The Gemini API key was rejected. Check it in Settings." }
+        if ((response.status === 400 || response.status === 403) && /API key|permission|PERMISSION_DENIED/i.test(text))
+          return { error: "The Gemini API key was rejected. Check it in Settings." }
         if (response.status === 404 || /no longer available|not found/i.test(text)) retired.add(model)
         else if (/quota|billing/i.test(text)) retired.add(model)
       } catch {

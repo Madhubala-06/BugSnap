@@ -19,12 +19,7 @@ export class ReportsController {
   }
 
   @Get()
-  findAll(
-    @Auth() auth: AuthContext,
-    @Query("status") status?: string,
-    @Query("severity") severity?: string,
-    @Query("limit") limit?: string
-  ) {
+  findAll(@Auth() auth: AuthContext, @Query("status") status?: string, @Query("severity") severity?: string, @Query("limit") limit?: string) {
     return this.reports.findAll(auth.workspaceId, {
       status: STATUSES.includes(status as ReportStatus) ? (status as ReportStatus) : undefined,
       severity: SEVERITIES.includes(severity as Severity) ? (severity as Severity) : undefined,
@@ -126,7 +121,7 @@ export class ReportsController {
       labels?: string[]
       assigneeId?: string | null
       projectId?: string | null
-    }
+    },
   ) {
     return this.reports.update(auth.workspaceId, id, body ?? {}, auth.userId)
   }

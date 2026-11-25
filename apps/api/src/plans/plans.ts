@@ -28,14 +28,21 @@ export class LimitReached extends HttpException {
 }
 
 export async function usage(prisma: PrismaService, workspaceId: string) {
-  const ws = await prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { plan: true, aiUsed: true, aiPeriod: true, proInterestAt: true, geminiKeyEnc: true } })
+  const ws = await prisma.workspace.findUniqueOrThrow({
+    where: { id: workspaceId },
+    select: { plan: true, aiUsed: true, aiPeriod: true, proInterestAt: true, geminiKeyEnc: true },
+  })
   const plan = planOf(ws.plan)
   const period = new Date().toISOString().slice(0, 7)
   const [reports, members, pendingInvites, videos] = await Promise.all([
     prisma.bugReport.count({ where: { workspaceId, createdAt: { gte: monthStart() } } }),
     prisma.membership.count({ where: { workspaceId } }),
     prisma.invite.count({ where: { workspaceId, acceptedAt: null, expiresAt: { gt: new Date() } } }),
-    prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*)::bigint AS n FROM bug_reports WHERE workspace_id = ${workspaceId} AND browser_info->>'recordingUrl' IS NOT NULL`.then((r) => Number(r[0]?.n ?? 0)).catch(() => 0),
+    prisma.$queryRaw<
+      { n: bigint }[]
+    >`SELECT count(*)::bigint AS n FROM bug_reports WHERE workspace_id = ${workspaceId} AND browser_info->>'recordingUrl' IS NOT NULL`
+      .then((r) => Number(r[0]?.n ?? 0))
+      .catch(() => 0),
   ])
   return {
     plan,
@@ -55,7 +62,9 @@ export async function assertCanCreateReport(prisma: PrismaService, workspaceId: 
   if (plan.reportsPerMonth == null) return
   const used = await prisma.bugReport.count({ where: { workspaceId, createdAt: { gte: monthStart() } } })
   if (used >= plan.reportsPerMonth) {
-    throw new LimitReached(`This workspace used all ${plan.reportsPerMonth} bug reports of the ${plan.name} plan this month. It resets on the 1st, or join the Pro waitlist in Settings.`)
+    throw new LimitReached(
+      `This workspace used all ${plan.reportsPerMonth} bug reports of the ${plan.name} plan this month. It resets on the 1st, or join the Pro waitlist in Settings.`,
+    )
   }
 }
 
@@ -68,6 +77,8 @@ export async function assertCanAddMembers(prisma: PrismaService, workspaceId: st
     prisma.invite.count({ where: { workspaceId, acceptedAt: null, expiresAt: { gt: new Date() } } }),
   ])
   if (members + pending + adding > plan.members) {
-    throw new LimitReached(`The ${plan.name} plan allows ${plan.members} people per workspace (${members} members, ${pending} invited). Remove someone or join the Pro waitlist in Settings.`)
+    throw new LimitReached(
+      `The ${plan.name} plan allows ${plan.members} people per workspace (${members} members, ${pending} invited). Remove someone or join the Pro waitlist in Settings.`,
+    )
   }
 }

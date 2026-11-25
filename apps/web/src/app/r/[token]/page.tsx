@@ -11,7 +11,11 @@ import { RecordingPlayer } from "@/components/report/recording-player"
 import { InlineCode } from "@/components/report/inline-code"
 import { getSharedReport, type BugReport } from "@/lib/api"
 
-const strip = (html?: string | null) => (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+const strip = (html?: string | null) =>
+  (html ?? "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
 
 export default function SharedReportPage() {
   const { token } = useParams<{ token: string }>()
@@ -61,7 +65,12 @@ export default function SharedReportPage() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{report.title}</h1>
         {(page?.url || report.url) && (
-          <a href={page?.url || report.url || undefined} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+          <a
+            href={page?.url || report.url || undefined}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
             <Globe className="h-4 w-4" /> {page?.url || report.url}
           </a>
         )}
@@ -133,7 +142,9 @@ export default function SharedReportPage() {
               <CardContent>
                 <ol className="list-decimal space-y-1.5 pl-5 text-sm text-foreground-secondary">
                   {report.stepsToReproduce.map((s, i) => (
-                    <li key={i}><InlineCode text={s.replace(/^Step \d+:\s*/i, "")} /></li>
+                    <li key={i}>
+                      <InlineCode text={s.replace(/^Step \d+:\s*/i, "")} />
+                    </li>
                   ))}
                 </ol>
               </CardContent>
@@ -145,13 +156,17 @@ export default function SharedReportPage() {
                 {report.expectedResult && (
                   <div>
                     <h2 className="mb-1 font-medium text-foreground">Expected</h2>
-                    <p className="text-foreground-secondary"><InlineCode text={report.expectedResult} /></p>
+                    <p className="text-foreground-secondary">
+                      <InlineCode text={report.expectedResult} />
+                    </p>
                   </div>
                 )}
                 {report.actualResult && (
                   <div>
                     <h2 className="mb-1 font-medium text-foreground">Actual</h2>
-                    <p className="text-foreground-secondary"><InlineCode text={report.actualResult} /></p>
+                    <p className="text-foreground-secondary">
+                      <InlineCode text={report.actualResult} />
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -165,11 +180,15 @@ export default function SharedReportPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-foreground-secondary">
-                <p><InlineCode text={report.aiRootCause} /></p>
+                <p>
+                  <InlineCode text={report.aiRootCause} />
+                </p>
                 {report.aiSuggestions?.length > 0 && (
                   <ul className="list-disc space-y-1 pl-5">
                     {report.aiSuggestions.map((s, i) => (
-                      <li key={i}><InlineCode text={s} /></li>
+                      <li key={i}>
+                        <InlineCode text={s} />
+                      </li>
                     ))}
                   </ul>
                 )}

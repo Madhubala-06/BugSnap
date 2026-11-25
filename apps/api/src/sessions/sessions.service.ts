@@ -47,13 +47,7 @@ export class SessionsService {
     })
   }
 
-  async addLog(
-    sessionId: string,
-    type: LogType,
-    message: string,
-    data?: Prisma.InputJsonValue,
-    level: LogLevel = "INFO"
-  ) {
+  async addLog(sessionId: string, type: LogType, message: string, data?: Prisma.InputJsonValue, level: LogLevel = "INFO") {
     return this.prisma.sessionLog.create({
       data: {
         sessionId,
@@ -73,7 +67,7 @@ export class SessionsService {
       data?: Prisma.InputJsonValue
       level?: LogLevel
       timestamp?: Date
-    }>
+    }>,
   ) {
     return this.prisma.sessionLog.createMany({
       data: logs.map((log) => ({
@@ -87,13 +81,7 @@ export class SessionsService {
     })
   }
 
-  async saveRecording(
-    sessionId: string,
-    url: string,
-    duration?: number,
-    size?: number,
-    thumbnailUrl?: string
-  ) {
+  async saveRecording(sessionId: string, url: string, duration?: number, size?: number, thumbnailUrl?: string) {
     return this.prisma.recording.create({
       data: {
         sessionId,

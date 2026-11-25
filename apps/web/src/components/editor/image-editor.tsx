@@ -1,20 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import {
-  MousePointer2,
-  Pencil,
-  Square,
-  Circle,
-  ArrowRight,
-  Type,
-  Eraser,
-  Download,
-  X,
-  RotateCcw,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react"
+import { MousePointer2, Pencil, Square, Circle, ArrowRight, Type, Eraser, Download, X, RotateCcw, ZoomIn, ZoomOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -284,10 +271,7 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
     <button
       onClick={() => handleToolClick(toolName)}
       title={title}
-      className={cn(
-        "p-2 rounded-lg hover:bg-white/20 transition-colors",
-        tool === toolName && "bg-white/30"
-      )}
+      className={cn("p-2 rounded-lg hover:bg-white/20 transition-colors", tool === toolName && "bg-white/30")}
     >
       <Icon className="h-5 w-5" />
     </button>
@@ -314,10 +298,7 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className={cn(
-                  "w-6 h-6 rounded-full border-2 transition-transform",
-                  color === c ? "border-white scale-110" : "border-transparent"
-                )}
+                className={cn("w-6 h-6 rounded-full border-2 transition-transform", color === c ? "border-white scale-110" : "border-transparent")}
                 style={{ backgroundColor: c }}
               />
             ))}
@@ -337,14 +318,7 @@ export function ImageEditor({ imageUrl, onClose, onSave }: ImageEditorProps) {
           {(tool === "draw" || tool === "redact") && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-foreground-muted">Size:</span>
-              <input
-                type="range"
-                min="1"
-                max="20"
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="w-20 h-1 accent-white"
-              />
+              <input type="range" min="1" max="20" value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-20 h-1 accent-white" />
               <span className="text-xs w-4">{brushSize}</span>
             </div>
           )}

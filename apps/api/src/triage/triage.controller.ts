@@ -12,7 +12,7 @@ const COLORS = ["#3B82F6", "#A78BFA", "#F472B6", "#34D399", "#FBBF24", "#F87171"
 export class TriageController {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mailer: Mailer
+    private readonly mailer: Mailer,
   ) {}
 
   /** People who can be assigned in this workspace. */
@@ -151,10 +151,20 @@ export class TriageController {
 
 function cleanHosts(input: unknown): string[] {
   if (!Array.isArray(input)) return []
-  return [...new Set(input
-    .filter((h): h is string => typeof h === "string")
-    .map((h) => h.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, ""))
-    .filter((h) => /^[a-z0-9.-]+(:\d+)?$/.test(h)))].slice(0, 10)
+  return [
+    ...new Set(
+      input
+        .filter((h): h is string => typeof h === "string")
+        .map((h) =>
+          h
+            .trim()
+            .toLowerCase()
+            .replace(/^https?:\/\//, "")
+            .replace(/\/.*$/, ""),
+        )
+        .filter((h) => /^[a-z0-9.-]+(:\d+)?$/.test(h)),
+    ),
+  ].slice(0, 10)
 }
 
 export { logActivity }

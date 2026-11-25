@@ -4,7 +4,12 @@ export function isSlackWebhook(url: unknown): url is string {
 }
 
 export async function postToSlack(url: string, payload: object) {
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(10_000) })
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(10_000),
+  })
   if (!res.ok) throw new Error(`Slack ${res.status}: ${(await res.text()).slice(0, 120)}`)
 }
 
@@ -12,7 +17,10 @@ const SEV_EMOJI: Record<string, string> = { CRITICAL: ":red_circle:", HIGH: ":la
 
 /** One Slack message for a bug event, with a button back to BugSnap. */
 export function slackMessage(p: { headline: string; bug: string; title: string; severity: string; url: string; page?: string | null; extra?: string }) {
-  const lines = [`*<${p.url}|${p.bug}: ${p.title.replace(/[<>&]/g, "")}>*`, `${SEV_EMOJI[p.severity] ?? ""} ${p.severity.toLowerCase()}${p.page ? ` · ${p.page.replace(/^https?:\/\//, "").replace(/\?.*$/, "")}` : ""}`]
+  const lines = [
+    `*<${p.url}|${p.bug}: ${p.title.replace(/[<>&]/g, "")}>*`,
+    `${SEV_EMOJI[p.severity] ?? ""} ${p.severity.toLowerCase()}${p.page ? ` · ${p.page.replace(/^https?:\/\//, "").replace(/\?.*$/, "")}` : ""}`,
+  ]
   if (p.extra) lines.push(p.extra)
   return {
     text: `${p.headline}: ${p.bug} ${p.title}`,

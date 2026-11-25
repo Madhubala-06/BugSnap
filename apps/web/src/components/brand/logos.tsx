@@ -26,7 +26,10 @@ export function LinearMark({ className = "h-5 w-5" }: { className?: string }) {
 export function JiraMark({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
-      <path fill="#2684FF" d="M22.2 11.4 12.6 1.8 11.7.9 4.5 8.1l-2.7 2.7a.8.8 0 0 0 0 1.2l6.6 6.6 3.6 3.6 7.2-7.2.1-.1 2.9-2.9a.8.8 0 0 0 0-1.2Zm-10.2 4-3.3-3.3 3.3-3.3 3.3 3.3-3.3 3.3Z" />
+      <path
+        fill="#2684FF"
+        d="M22.2 11.4 12.6 1.8 11.7.9 4.5 8.1l-2.7 2.7a.8.8 0 0 0 0 1.2l6.6 6.6 3.6 3.6 7.2-7.2.1-.1 2.9-2.9a.8.8 0 0 0 0-1.2Zm-10.2 4-3.3-3.3 3.3-3.3 3.3 3.3-3.3 3.3Z"
+      />
     </svg>
   )
 }

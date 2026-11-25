@@ -7,5 +7,9 @@ import { ErrorsFilter } from "./errors.filter"
 import { Mailer } from "../auth/mailer"
 
 @Global()
-@Module({ controllers: [OpsController, CronController], providers: [ErrorsService, Mailer, { provide: APP_FILTER, useClass: ErrorsFilter }], exports: [ErrorsService] })
+@Module({
+  controllers: [OpsController, CronController],
+  providers: [ErrorsService, Mailer, { provide: APP_FILTER, useClass: ErrorsFilter }],
+  exports: [ErrorsService],
+})
 export class OpsModule {}

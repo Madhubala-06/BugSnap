@@ -59,7 +59,9 @@ export function ActivityFeed({ reportId, refreshKey }: { reportId: string; refre
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(() => {
-    getActivity(reportId).then(setItems).catch(() => setItems([]))
+    getActivity(reportId)
+      .then(setItems)
+      .catch(() => setItems([]))
   }, [reportId])
   useEffect(load, [load, refreshKey])
 
@@ -95,7 +97,15 @@ export function ActivityFeed({ reportId, refreshKey }: { reportId: string; refre
                     <span className="text-foreground-muted"> · {timeAgo(item.createdAt)}</span>
                   </p>
                   <p className="mt-1 whitespace-pre-wrap break-words rounded-lg border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground">
-                    {item.body?.split(/(@\w+)/g).map((part, i) => (part.startsWith("@") ? <span key={i} className="text-primary">{part}</span> : part))}
+                    {item.body?.split(/(@\w+)/g).map((part, i) =>
+                      part.startsWith("@") ? (
+                        <span key={i} className="text-primary">
+                          {part}
+                        </span>
+                      ) : (
+                        part
+                      ),
+                    )}
                   </p>
                 </div>
               </li>
@@ -104,9 +114,15 @@ export function ActivityFeed({ reportId, refreshKey }: { reportId: string; refre
                 {item.actor ? (
                   <Avatar name={item.actor.name} email={item.actor.email} size={20} />
                 ) : item.kind === "created" ? (
-                  <Avatar name={String((item.data as Record<string, unknown> | null)?.email ?? "Visitor")} email={String((item.data as Record<string, unknown> | null)?.email ?? "visitor")} size={20} />
+                  <Avatar
+                    name={String((item.data as Record<string, unknown> | null)?.email ?? "Visitor")}
+                    email={String((item.data as Record<string, unknown> | null)?.email ?? "visitor")}
+                    size={20}
+                  />
                 ) : (
-                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"><Sparkles className="h-3 w-3" /></span>
+                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                    <Sparkles className="h-3 w-3" />
+                  </span>
                 )}
                 <span className="pt-0.5">
                   <b className="font-medium text-foreground">
@@ -121,7 +137,7 @@ export function ActivityFeed({ reportId, refreshKey }: { reportId: string; refre
                   <span className="text-foreground-muted"> · {timeAgo(item.createdAt)}</span>
                 </span>
               </li>
-            )
+            ),
           )}
         </ol>
       )}

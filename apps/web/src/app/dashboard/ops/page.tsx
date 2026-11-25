@@ -40,11 +40,17 @@ export default function OpsPage() {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Errors</h1>
-          <p className="text-sm text-foreground-muted">Crashes in BugSnap itself (server, website, extension). New kinds of errors are emailed to the team once an hour.</p>
+          <p className="text-sm text-foreground-muted">
+            Crashes in BugSnap itself (server, website, extension). New kinds of errors are emailed to the team once an hour.
+          </p>
         </div>
         <div className="flex gap-1 rounded-lg border border-border p-0.5 text-xs">
           {[1, 7, 30].map((d) => (
-            <button key={d} onClick={() => setDays(d)} className={`rounded-md px-2.5 py-1 ${d === days ? "bg-background-secondary text-foreground" : "text-foreground-muted hover:text-foreground"}`}>
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`rounded-md px-2.5 py-1 ${d === days ? "bg-background-secondary text-foreground" : "text-foreground-muted hover:text-foreground"}`}
+            >
               {d === 1 ? "24 hours" : `${d} days`}
             </button>
           ))}
@@ -63,13 +69,16 @@ export default function OpsPage() {
           </p>
           {data.groups.map((g) => (
             <div key={g.fingerprint} className="border-b border-border last:border-0">
-              <button onClick={() => setOpen(open === g.fingerprint ? null : g.fingerprint)} className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-background-secondary/60">
-                <span className="mt-0.5 w-20 flex-none rounded-md bg-red-500/10 px-1.5 py-0.5 text-center text-[11px] font-medium text-red-400">{SOURCE[g.source] ?? g.source}</span>
+              <button
+                onClick={() => setOpen(open === g.fingerprint ? null : g.fingerprint)}
+                className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-background-secondary/60"
+              >
+                <span className="mt-0.5 w-20 flex-none rounded-md bg-red-500/10 px-1.5 py-0.5 text-center text-[11px] font-medium text-red-400">
+                  {SOURCE[g.source] ?? g.source}
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-mono text-[13px] text-foreground">{g.message}</span>
-                  <span className="block truncate text-xs text-foreground-muted">
-                    {[g.method, g.path?.split("?")[0], g.status].filter(Boolean).join(" ")}
-                  </span>
+                  <span className="block truncate text-xs text-foreground-muted">{[g.method, g.path?.split("?")[0], g.status].filter(Boolean).join(" ")}</span>
                 </span>
                 <span className="flex-none text-right text-xs text-foreground-muted">
                   <span className="block font-medium text-foreground">×{g.count}</span>
@@ -78,7 +87,11 @@ export default function OpsPage() {
               </button>
               {open === g.fingerprint && (
                 <div className="space-y-2 px-4 pb-4">
-                  {g.stack && <pre className="max-h-72 overflow-auto rounded-lg bg-background-secondary p-3 font-mono text-[11.5px] leading-5 text-foreground-secondary">{g.stack}</pre>}
+                  {g.stack && (
+                    <pre className="max-h-72 overflow-auto rounded-lg bg-background-secondary p-3 font-mono text-[11.5px] leading-5 text-foreground-secondary">
+                      {g.stack}
+                    </pre>
+                  )}
                   {g.userAgent && <p className="text-xs text-foreground-muted">Browser: {g.userAgent}</p>}
                 </div>
               )}

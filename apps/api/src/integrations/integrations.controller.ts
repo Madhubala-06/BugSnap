@@ -1,4 +1,20 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Headers, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res } from "@nestjs/common"
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  Headers,
+  HttpCode,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+} from "@nestjs/common"
 import { RateLimit } from "../ops/rate-limit"
 import type { Request, Response } from "express"
 import { PrismaService } from "../prisma/prisma.service"
@@ -18,7 +34,7 @@ const asProvider = (p: string): Provider => {
 export class IntegrationsController {
   constructor(
     private readonly integrations: IntegrationsService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get("integrations")
@@ -90,7 +106,13 @@ export class IntegrationsController {
   @Post("reports/:id/issues")
   @MinRole("member")
   createIssue(@Auth() auth: AuthContext, @Param("id") id: string, @Body() body: { provider?: string; target?: string }) {
-    return this.integrations.createIssue(auth.workspaceId, auth.userId, id, asProvider(String(body?.provider ?? "")), typeof body?.target === "string" ? body.target : undefined)
+    return this.integrations.createIssue(
+      auth.workspaceId,
+      auth.userId,
+      id,
+      asProvider(String(body?.provider ?? "")),
+      typeof body?.target === "string" ? body.target : undefined,
+    )
   }
 
   @Post("reports/:id/issues/refresh")
@@ -105,14 +127,25 @@ export class IntegrationsController {
   @Public()
   @Post("integrations/github/webhook")
   @HttpCode(200)
-  async githubWebhook(@Req() req: RawRequest, @Headers("x-hub-signature-256") sig: string, @Headers("x-github-event") event: string, @Body() body: Record<string, any>) {
+  async githubWebhook(
+    @Req() req: RawRequest,
+    @Headers("x-hub-signature-256") sig: string,
+    @Headers("x-github-event") event: string,
+    @Body() body: Record<string, any>,
+  ) {
     if (!verifyGithubSignature(req.rawBody, sig)) throw new ForbiddenException("Bad signature")
     if (event === "issues" && (body.action === "closed" || body.action === "reopened")) {
       const repo = body.repository?.full_name
       const num = body.issue?.number
       if (repo && num) {
         const closed = body.action === "closed"
-        return this.integrations.applyExternal("github", `${repo}#${num}`, closed, `${repo}#${num} was ${closed ? "closed" : "reopened"} on GitHub`, closed ? "closed" : "open")
+        return this.integrations.applyExternal(
+          "github",
+          `${repo}#${num}`,
+          closed,
+          `${repo}#${num} was ${closed ? "closed" : "reopened"} on GitHub`,
+          closed ? "closed" : "open",
+        )
       }
     }
     if (event === "installation" && body.action === "deleted" && body.installation?.id) {
@@ -133,7 +166,13 @@ export class IntegrationsController {
       const type = body.data.state?.type as string | undefined
       const name = body.data.state?.name as string | undefined
       const done = type === "completed" || type === "canceled"
-      return this.integrations.applyExternal("linear", body.data.id, done, `${body.data.identifier ?? "Linear issue"} moved to ${name ?? type}`, name ?? type ?? "")
+      return this.integrations.applyExternal(
+        "linear",
+        body.data.id,
+        done,
+        `${body.data.identifier ?? "Linear issue"} moved to ${name ?? type}`,
+        name ?? type ?? "",
+      )
     }
     return { ok: true }
   }

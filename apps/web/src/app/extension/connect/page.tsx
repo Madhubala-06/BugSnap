@@ -74,14 +74,18 @@ export default function ConnectExtensionPage() {
             <PlugZap className="mx-auto mb-3 h-7 w-7 text-foreground-muted" />
             <h1 className="text-lg font-semibold">Extension not found</h1>
             <p className="mt-2 text-sm text-foreground-muted">Install the BugSnap Chrome extension, then click its Sign in button again.</p>
-            <Link href="/dashboard/settings#extension" className="mt-6 inline-block text-sm text-primary hover:underline">How to install it</Link>
+            <Link href="/dashboard/settings#extension" className="mt-6 inline-block text-sm text-primary hover:underline">
+              How to install it
+            </Link>
           </>
         )}
         {step === "error" && (
           <>
             <h1 className="text-lg font-semibold">Could not sign in the extension</h1>
             <p className="mt-2 text-sm text-foreground-muted">{error}</p>
-            <button onClick={() => window.location.reload()} className="mt-6 text-sm text-primary hover:underline">Try again</button>
+            <button onClick={() => window.location.reload()} className="mt-6 text-sm text-primary hover:underline">
+              Try again
+            </button>
           </>
         )}
       </div>

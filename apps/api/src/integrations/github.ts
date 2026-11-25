@@ -65,7 +65,12 @@ export async function createIssue(installationId: string, repo: string, title: s
     body: JSON.stringify({ title: title.slice(0, 250), body: body.slice(0, 60_000), labels }),
   }).catch(async (error) => {
     // Labels that do not exist (or no permission) should not block the issue.
-    if (labels.length) return gh<{ number: number; html_url: string; state: string }>(`/repos/${repo}/issues`, { method: "POST", token, body: JSON.stringify({ title: title.slice(0, 250), body: body.slice(0, 60_000) }) })
+    if (labels.length)
+      return gh<{ number: number; html_url: string; state: string }>(`/repos/${repo}/issues`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ title: title.slice(0, 250), body: body.slice(0, 60_000) }),
+      })
     throw error
   })
   return { number: issue.number, url: issue.html_url, state: issue.state }
@@ -73,7 +78,11 @@ export async function createIssue(installationId: string, repo: string, title: s
 
 export async function setIssueState(installationId: string, repo: string, number: number, state: "open" | "closed", reason?: "completed" | "not_planned") {
   const token = await installationToken(installationId)
-  await gh(`/repos/${repo}/issues/${number}`, { method: "PATCH", token, body: JSON.stringify({ state, ...(state === "closed" && reason ? { state_reason: reason } : {}) }) })
+  await gh(`/repos/${repo}/issues/${number}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ state, ...(state === "closed" && reason ? { state_reason: reason } : {}) }),
+  })
 }
 
 export async function commentOnIssue(installationId: string, repo: string, number: number, body: string) {
@@ -102,13 +111,19 @@ export async function repoInfo(installationId: string, repo: string) {
 export async function listFiles(installationId: string, repo: string, branch: string) {
   const token = await installationToken(installationId)
   const ref = await gh<{ object: { sha: string } }>(`/repos/${repo}/git/ref/heads/${encodeURIComponent(branch)}`, { token })
-  const tree = await gh<{ tree: { path: string; type: string; size?: number }[]; truncated: boolean }>(`/repos/${repo}/git/trees/${ref.object.sha}?recursive=1`, { token })
+  const tree = await gh<{ tree: { path: string; type: string; size?: number }[]; truncated: boolean }>(
+    `/repos/${repo}/git/trees/${ref.object.sha}?recursive=1`,
+    { token },
+  )
   return { headSha: ref.object.sha, files: tree.tree.filter((t) => t.type === "blob").map((t) => ({ path: t.path, size: t.size ?? 0 })) }
 }
 
 export async function readFile(installationId: string, repo: string, path: string, ref: string) {
   const token = await installationToken(installationId)
-  const r = await gh<{ content: string; encoding: string; sha: string }>(`/repos/${repo}/contents/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(ref)}`, { token })
+  const r = await gh<{ content: string; encoding: string; sha: string }>(
+    `/repos/${repo}/contents/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(ref)}`,
+    { token },
+  )
   return { text: Buffer.from(r.content, (r.encoding as BufferEncoding) || "base64").toString("utf8"), sha: r.sha }
 }
 
@@ -128,7 +143,11 @@ export async function writeFile(installationId: string, repo: string, branch: st
 
 export async function openPullRequest(installationId: string, repo: string, head: string, base: string, title: string, body: string) {
   const token = await installationToken(installationId)
-  const r = await gh<{ number: number; html_url: string }>(`/repos/${repo}/pulls`, { method: "POST", token, body: JSON.stringify({ title, head, base, body, draft: true }) })
+  const r = await gh<{ number: number; html_url: string }>(`/repos/${repo}/pulls`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ title, head, base, body, draft: true }),
+  })
   return { number: r.number, url: r.html_url }
 }
 

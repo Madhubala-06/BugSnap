@@ -43,15 +43,13 @@ export function WorkspaceDataProvider({ children }: { children: React.ReactNode 
   }, [])
 
   useEffect(() => {
-    listMembers().then(setMembers).catch(() => undefined)
+    listMembers()
+      .then(setMembers)
+      .catch(() => undefined)
     refreshProjects()
   }, [refreshProjects])
 
-  return (
-    <Ctx.Provider value={{ members, projects, refreshProjects, crumbs, setCrumbs, newProjectOpen, setNewProjectOpen }}>
-      {children}
-    </Ctx.Provider>
-  )
+  return <Ctx.Provider value={{ members, projects, refreshProjects, crumbs, setCrumbs, newProjectOpen, setNewProjectOpen }}>{children}</Ctx.Provider>
 }
 
 /** Pages call this to set the breadcrumb trail in the top bar. */

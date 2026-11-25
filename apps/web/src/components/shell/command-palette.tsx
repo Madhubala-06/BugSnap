@@ -11,7 +11,8 @@ import { signOut } from "@/lib/auth"
 import { bugId, Kbd } from "@/components/kit/bits"
 import { useWorkspace } from "./workspace-data"
 
-const group = "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-foreground-muted"
+const group =
+  "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-foreground-muted"
 const item =
   "flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground-secondary data-[selected=true]:bg-background-tertiary data-[selected=true]:text-foreground"
 
@@ -23,7 +24,10 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const [reports, setReports] = useState<BugReport[]>([])
 
   useEffect(() => {
-    if (open) getBugReports({ limit: 200 }).then(setReports).catch(() => undefined)
+    if (open)
+      getBugReports({ limit: 200 })
+        .then(setReports)
+        .catch(() => undefined)
   }, [open])
 
   useEffect(() => {
@@ -77,18 +81,48 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                 </Command.Group>
               )}
               <Command.Group heading="Go to" className={group}>
-                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard"))}><LayoutGrid className="h-4 w-4" />Home</Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/reports?view=inbox"))}><Inbox className="h-4 w-4" />Inbox</Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/reports?view=mine"))}><User className="h-4 w-4" />My bugs</Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/reports?view=all"))}><Bug className="h-4 w-4" />All reports</Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/settings"))}><Settings className="h-4 w-4" />Settings</Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard"))}>
+                  <LayoutGrid className="h-4 w-4" />
+                  Home
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/reports?view=inbox"))}>
+                  <Inbox className="h-4 w-4" />
+                  Inbox
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/reports?view=mine"))}>
+                  <User className="h-4 w-4" />
+                  My bugs
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/reports?view=all"))}>
+                  <Bug className="h-4 w-4" />
+                  All reports
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/settings"))}>
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Command.Item>
               </Command.Group>
               <Command.Group heading="Actions" className={group}>
-                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/settings#extension"))}><Circle className="h-4 w-4" />Record a bug</Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => setNewProjectOpen(true))}><FolderPlus className="h-4 w-4" />New project</Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/settings#agents"))}><Bot className="h-4 w-4" />Connect Claude Code or Cursor (MCP)</Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => setTheme(resolvedTheme === "dark" ? "light" : "dark"))}><Moon className="h-4 w-4" />Switch light / dark theme</Command.Item>
-                <Command.Item className={item} onSelect={() => run(() => signOut())}><LogOut className="h-4 w-4" />Sign out</Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/settings#extension"))}>
+                  <Circle className="h-4 w-4" />
+                  Record a bug
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => setNewProjectOpen(true))}>
+                  <FolderPlus className="h-4 w-4" />
+                  New project
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => router.push("/dashboard/settings#agents"))}>
+                  <Bot className="h-4 w-4" />
+                  Connect Claude Code or Cursor (MCP)
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => setTheme(resolvedTheme === "dark" ? "light" : "dark"))}>
+                  <Moon className="h-4 w-4" />
+                  Switch light / dark theme
+                </Command.Item>
+                <Command.Item className={item} onSelect={() => run(() => signOut())}>
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </Command.Item>
               </Command.Group>
             </Command.List>
           </Command>

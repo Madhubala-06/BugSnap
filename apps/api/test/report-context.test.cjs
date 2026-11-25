@@ -62,7 +62,9 @@ test("fallbackTitle prefers the first error from the recording", () => {
   assert.equal(fallbackTitle(logs, { url: "https://shop.test/checkout?x=1" }), "TypeError: cart is null on /checkout")
   const net = [{ type: "NETWORK", level: "ERROR", message: "POST https://shop.test/api/pay?token=[hidden] → 502", timestamp: at(1) }]
   assert.equal(fallbackTitle(net), "POST /api/pay failed (502)")
-  const crash = [{ type: "CONSOLE", level: "ERROR", message: "Payment UI crashed TypeError: Cannot read properties of undefined (reading 'id')", timestamp: at(1) }]
+  const crash = [
+    { type: "CONSOLE", level: "ERROR", message: "Payment UI crashed TypeError: Cannot read properties of undefined (reading 'id')", timestamp: at(1) },
+  ]
   assert.equal(fallbackTitle(crash, { url: "https://shop.test/checkout" }), "TypeError: Cannot read properties of undefined (reading 'id') on /checkout")
   assert.equal(fallbackTitle([], { title: "Checkout" }), 'Issue on "Checkout"')
 })

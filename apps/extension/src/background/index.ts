@@ -122,9 +122,7 @@ async function pickTargetTab(targetTabId?: number): Promise<chrome.tabs.Tab | un
   }
   // Fall back to the most recent normal web tab (not the recorder page).
   const tabs = await chrome.tabs.query({ lastFocusedWindow: true })
-  return tabs
-    .filter((t) => t.url && /^https?:/.test(t.url))
-    .sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))[0]
+  return tabs.filter((t) => t.url && /^https?:/.test(t.url)).sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))[0]
 }
 
 async function startRecording(targetTabId?: number) {
@@ -223,8 +221,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   scheduleSave()
 })
 
-
-
 // ---------- recording: countdown, pause/resume, finish, discard ----------
 
 const OFFSCREEN_URL = "tabs/offscreen.html"
@@ -288,7 +284,9 @@ async function beginRecording(tabId?: number) {
   try {
     // Tab capture: records just this tab, no "choose what to share" picker.
     const streamId = await new Promise<string>((resolve, reject) =>
-      chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (id) => (chrome.runtime.lastError || !id ? reject(new Error(chrome.runtime.lastError?.message || "Tab capture failed")) : resolve(id)))
+      chrome.tabCapture.getMediaStreamId({ targetTabId: tab.id }, (id) =>
+        chrome.runtime.lastError || !id ? reject(new Error(chrome.runtime.lastError?.message || "Tab capture failed")) : resolve(id),
+      ),
     )
     await ensureOffscreen()
     const ready = await toOffscreen({ type: "PREPARE", streamId })
@@ -387,7 +385,11 @@ async function finish() {
     const auth = await getAuth()
     // Open the report next to the page with the bug, right away.
     const target = session.targetTabId ? await chrome.tabs.get(session.targetTabId).catch(() => undefined) : undefined
-    await chrome.tabs.create({ url: `${DEFAULT_APP_URL}/dashboard/reports/${report.id}`, active: true, ...(target ? { index: target.index + 1, windowId: target.windowId } : {}) })
+    await chrome.tabs.create({
+      url: `${DEFAULT_APP_URL}/dashboard/reports/${report.id}`,
+      active: true,
+      ...(target ? { index: target.index + 1, windowId: target.windowId } : {}),
+    })
     await toOffscreen({ type: "STOP", apiUrl: DEFAULT_API_URL, token: auth?.token ?? "", reportId: report.id, durationSec })
     return { ok: true, reportId: report.id }
   } catch (e) {
@@ -434,7 +436,6 @@ ready.then(async () => {
     await setBadge("")
   }
 })
-
 
 // ---------- instant replay: the last 2 minutes, even when you were not recording ----------
 
@@ -501,7 +502,13 @@ async function replayPage(info: PageInfo, sender: chrome.runtime.MessageSender) 
   await loadReplays()
   const r = bufferFor(sender.tab.id)
   r.page = info
-  r.logs.push({ type: "NAVIGATION", level: "INFO", message: `Opened ${info.url}`, data: { url: info.url, title: info.title }, timestamp: new Date().toISOString() })
+  r.logs.push({
+    type: "NAVIGATION",
+    level: "INFO",
+    message: `Opened ${info.url}`,
+    data: { url: info.url, title: info.title },
+    timestamp: new Date().toISOString(),
+  })
   prune(r)
   persistReplays()
   return { ok: true }
@@ -532,7 +539,12 @@ async function saveReplay(tabId?: number) {
   await snap(tab, r) // and one of how it looks right now
   const logs = r.logs
   const startedAt = Date.parse(logs[0].timestamp)
-  const page = r.page ?? { url: tab.url ?? "", title: tab.title ?? "", userAgent: navigator.userAgent, viewport: { width: tab.width ?? 0, height: tab.height ?? 0 } }
+  const page = r.page ?? {
+    url: tab.url ?? "",
+    title: tab.title ?? "",
+    userAgent: navigator.userAgent,
+    viewport: { width: tab.width ?? 0, height: tab.height ?? 0 },
+  }
   try {
     const res = await apiFetch("/reports/quick", {
       method: "POST",
@@ -583,7 +595,6 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command === "save-replay") await saveReplay(tab?.id)
 })
 
-
 // ---------- report the extension's own crashes to BugSnap's error log ----------
 const reportedErrors = new Set<string>()
 function reportOwnError(message: string, stack?: string) {
@@ -592,7 +603,12 @@ function reportOwnError(message: string, stack?: string) {
   fetch(`${DEFAULT_API_URL}/ops/client-errors`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ source: "extension", message: `[v${chrome.runtime.getManifest().version}] ${message}`.slice(0, 1000), stack: stack?.slice(0, 6000), url: "background" }),
+    body: JSON.stringify({
+      source: "extension",
+      message: `[v${chrome.runtime.getManifest().version}] ${message}`.slice(0, 1000),
+      stack: stack?.slice(0, 6000),
+      url: "background",
+    }),
   }).catch(() => undefined)
 }
 self.addEventListener("error", (e) => reportOwnError((e as ErrorEvent).message, (e as ErrorEvent).error?.stack))

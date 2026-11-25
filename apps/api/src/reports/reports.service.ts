@@ -53,7 +53,6 @@ export function sanitizeLogs(input: unknown): CapturedLog[] {
     }))
 }
 
-
 interface UpdateReportDto {
   title?: string
   description?: string
@@ -78,12 +77,12 @@ export class ReportsService {
     private readonly prisma: PrismaService,
     private readonly ai: AIService,
     private readonly mailer: Mailer,
-    private readonly integrations: IntegrationsService
+    private readonly integrations: IntegrationsService,
   ) {}
 
   async createQuick(
     auth: { workspaceId: string; userId: string | null; projectId?: string; source?: "extension" | "widget"; reporter?: { email?: string; name?: string } },
-    data: QuickReportInput
+    data: QuickReportInput,
   ) {
     await assertCanCreateReport(this.prisma, auth.workspaceId)
     const logs = sanitizeLogs(data.logs)
@@ -102,8 +101,8 @@ export class ReportsService {
     const project = auth.projectId
       ? { id: auth.projectId }
       : host
-      ? await this.prisma.project.findFirst({ where: { workspaceId: auth.workspaceId, hosts: { has: host } }, select: { id: true } })
-      : null
+        ? await this.prisma.project.findFirst({ where: { workspaceId: auth.workspaceId, hosts: { has: host } }, select: { id: true } })
+        : null
     const create = async () => {
       const number = await this.nextNumber(auth.workspaceId)
       return this.prisma.bugReport.create({
@@ -142,7 +141,6 @@ export class ReportsService {
           } as Prisma.InputJsonValue,
         },
       })
-
     }
     let report: Awaited<ReturnType<typeof create>>
     try {
@@ -161,7 +159,13 @@ export class ReportsService {
     // With media still uploading, the AI and the Slack alert wait for attachMedia().
     if (data.mediaPending) return { ...report, analysis, aiError }
     if (data.analyze) this.runAiInBackground(auth.workspaceId, report.id)
-    else await this.integrations.notifySlack(auth.workspaceId, "created", report.id, auth.source === "widget" ? `Reported from the website${auth.reporter?.email ? ` by ${auth.reporter.email}` : ""}` : undefined)
+    else
+      await this.integrations.notifySlack(
+        auth.workspaceId,
+        "created",
+        report.id,
+        auth.source === "widget" ? `Reported from the website${auth.reporter?.email ? ` by ${auth.reporter.email}` : ""}` : undefined,
+      )
     return { ...report, analysis, aiError }
   }
 
@@ -171,7 +175,12 @@ export class ReportsService {
     if (attempts === 1) {
       const r = await this.prisma.bugReport.findUnique({ where: { id }, select: { browserInfo: true } })
       const info = (r?.browserInfo ?? {}) as { source?: string; reporter?: { email?: string } }
-      await this.integrations.notifySlack(workspaceId, "created", id, info.source === "widget" ? `Reported from the website${info.reporter?.email ? ` by ${info.reporter.email}` : ""}` : undefined)
+      await this.integrations.notifySlack(
+        workspaceId,
+        "created",
+        id,
+        info.source === "widget" ? `Reported from the website${info.reporter?.email ? ` by ${info.reporter.email}` : ""}` : undefined,
+      )
     }
   }
 
@@ -192,25 +201,31 @@ export class ReportsService {
   }
 
   async findAll(workspaceId: string, filters?: { status?: ReportStatus; severity?: Severity; limit?: number }) {
-    return this.prisma.bugReport.findMany({
-      where: {
-        workspaceId,
-        ...(filters?.status && { status: filters.status }),
-        ...(filters?.severity && { severity: filters.severity }),
-      },
-      select: LIST_FIELDS,
-      orderBy: { createdAt: "desc" },
-      take: Math.min(filters?.limit ?? 200, 500),
-    }).then(stripLogs).then((rows) => rows.map(withStaleAi)).then((rows) => this.withDuplicateCounts(workspaceId, rows))
+    return this.prisma.bugReport
+      .findMany({
+        where: {
+          workspaceId,
+          ...(filters?.status && { status: filters.status }),
+          ...(filters?.severity && { severity: filters.severity }),
+        },
+        select: LIST_FIELDS,
+        orderBy: { createdAt: "desc" },
+        take: Math.min(filters?.limit ?? 200, 500),
+      })
+      .then(stripLogs)
+      .then((rows) => rows.map(withStaleAi))
+      .then((rows) => this.withDuplicateCounts(workspaceId, rows))
   }
 
   async getRecent(workspaceId: string, limit = 5) {
-    return this.prisma.bugReport.findMany({
-      where: { workspaceId },
-      select: LIST_FIELDS,
-      orderBy: { createdAt: "desc" },
-      take: Math.min(limit, 50),
-    }).then(stripLogs)
+    return this.prisma.bugReport
+      .findMany({
+        where: { workspaceId },
+        select: LIST_FIELDS,
+        orderBy: { createdAt: "desc" },
+        take: Math.min(limit, 50),
+      })
+      .then(stripLogs)
   }
 
   async getStats(workspaceId: string) {
@@ -255,7 +270,14 @@ export class ReportsService {
       .filter((u): u is string => typeof u === "string" && isOwnUpload(u, "thumbnails", workspaceId))
       .slice(0, 30)
     const duration = typeof data.duration === "number" && Number.isFinite(data.duration) ? Math.max(0, Math.round(data.duration)) : info.duration
-    const next = { ...info, recordingUrl, screenshotUrls, duration, mediaPending: false, mediaError: typeof data.error === "string" ? data.error.slice(0, 300) : undefined }
+    const next = {
+      ...info,
+      recordingUrl,
+      screenshotUrls,
+      duration,
+      mediaPending: false,
+      mediaError: typeof data.error === "string" ? data.error.slice(0, 300) : undefined,
+    }
     await this.prisma.bugReport.update({ where: { id }, data: { browserInfo: next as Prisma.InputJsonValue } })
     if (report.aiStatus === "pending") this.runAiInBackground(workspaceId, id)
     else await this.integrations.notifySlack(workspaceId, "created", id)
@@ -296,7 +318,7 @@ export class ReportsService {
     const a = result.analysis
     // Keep a title the user already edited.
     const current = await this.prisma.bugReport.findUniqueOrThrow({ where: { id }, select: { title: true, description: true } })
-    const autoTitle = current.title === report.title && (report.aiStatus !== "done")
+    const autoTitle = current.title === report.title && report.aiStatus !== "done"
     await this.prisma.bugReport.update({
       where: { id },
       data: {
@@ -320,7 +342,7 @@ export class ReportsService {
 
   async setShared(workspaceId: string, id: string, shared: boolean, actorId?: string) {
     const report = await this.findOne(workspaceId, id)
-    const shareToken = shared ? report.shareToken ?? randomToken().slice(0, 22) : null
+    const shareToken = shared ? (report.shareToken ?? randomToken().slice(0, 22)) : null
     await this.prisma.bugReport.update({ where: { id }, data: { shareToken } })
     if (shared !== Boolean(report.shareToken)) await logActivity(this.prisma, id, actorId ?? null, shared ? "shared" : "unshared")
     return { shareToken }
@@ -379,7 +401,18 @@ export class ReportsService {
   async update(workspaceId: string, id: string, data: UpdateReportDto, actorId?: string) {
     const before = await this.findOne(workspaceId, id)
     const allowed: Prisma.BugReportUncheckedUpdateInput = {}
-    for (const key of ["title", "description", "stepsToReproduce", "expectedResult", "actualResult", "severity", "status", "aiSummary", "aiRootCause", "aiSuggestions"] as const) {
+    for (const key of [
+      "title",
+      "description",
+      "stepsToReproduce",
+      "expectedResult",
+      "actualResult",
+      "severity",
+      "status",
+      "aiSummary",
+      "aiRootCause",
+      "aiSuggestions",
+    ] as const) {
       if (data[key] !== undefined) (allowed as Record<string, unknown>)[key] = data[key]
     }
     if (typeof allowed.title === "string") allowed.title = allowed.title.trim().slice(0, 200) || before.title
@@ -425,10 +458,14 @@ export class ReportsService {
         await this.integrations.notifySlack(workspaceId, "assigned", id, who ? `Assigned to *${who.name}*` : undefined)
       }
     }
-    if (allowed.priority !== undefined && allowed.priority !== before.priority) await logActivity(this.prisma, id, actor, "priority", { from: before.priority, to: allowed.priority })
-    if (allowed.labels !== undefined && JSON.stringify(allowed.labels) !== JSON.stringify(before.labels)) await logActivity(this.prisma, id, actor, "labels", { to: allowed.labels })
-    if (allowed.projectId !== undefined && allowed.projectId !== before.projectId) await logActivity(this.prisma, id, actor, "project", { to: allowed.projectId })
-    if (allowed.severity !== undefined && allowed.severity !== before.severity) await logActivity(this.prisma, id, actor, "severity", { from: before.severity, to: allowed.severity })
+    if (allowed.priority !== undefined && allowed.priority !== before.priority)
+      await logActivity(this.prisma, id, actor, "priority", { from: before.priority, to: allowed.priority })
+    if (allowed.labels !== undefined && JSON.stringify(allowed.labels) !== JSON.stringify(before.labels))
+      await logActivity(this.prisma, id, actor, "labels", { to: allowed.labels })
+    if (allowed.projectId !== undefined && allowed.projectId !== before.projectId)
+      await logActivity(this.prisma, id, actor, "project", { to: allowed.projectId })
+    if (allowed.severity !== undefined && allowed.severity !== before.severity)
+      await logActivity(this.prisma, id, actor, "severity", { from: before.severity, to: allowed.severity })
     if (allowed.title !== undefined && allowed.title !== before.title) await logActivity(this.prisma, id, actor, "title", { to: allowed.title })
     return updated
   }
@@ -459,7 +496,7 @@ export class ReportsService {
     // Remove this report's files from storage too (only files inside this workspace's folder).
     const info = (report.browserInfo ?? {}) as { recordingUrl?: string; screenshotUrls?: string[] }
     const urls = [info.recordingUrl, ...(info.screenshotUrls ?? [])].filter(
-      (u): u is string => typeof u === "string" && isBlobUrl(u) && (isOwnUpload(u, "thumbnails", workspaceId) || isOwnUpload(u, "recordings", workspaceId))
+      (u): u is string => typeof u === "string" && isBlobUrl(u) && (isOwnUpload(u, "thumbnails", workspaceId) || isOwnUpload(u, "recordings", workspaceId)),
     )
     if (urls.length && process.env.BLOB_READ_WRITE_TOKEN) {
       await del(urls, { token: process.env.BLOB_READ_WRITE_TOKEN }).catch(() => undefined)

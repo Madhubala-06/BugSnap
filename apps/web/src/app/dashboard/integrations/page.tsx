@@ -24,7 +24,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
 const INFO: Record<Provider, { name: string; blurb: string; Logo: (p: { className?: string }) => JSX.Element }> = {
-  github: { name: "GitHub", blurb: "Create issues in one click. Closing the issue resolves the bug, and resolving the bug closes the issue.", Logo: GithubMark },
+  github: {
+    name: "GitHub",
+    blurb: "Create issues in one click. Closing the issue resolves the bug, and resolving the bug closes the issue.",
+    Logo: GithubMark,
+  },
   linear: { name: "Linear", blurb: "Create Linear issues from bugs. Status stays in sync both ways.", Logo: LinearMark },
   jira: { name: "Jira", blurb: "Create Jira tickets from bugs. Moving the ticket to Done resolves the bug, and the other way round.", Logo: JiraMark },
   slack: { name: "Slack", blurb: "Post new, assigned and resolved bugs to a channel.", Logo: SlackMark },
@@ -48,7 +52,13 @@ function Integrations() {
   const [state, setState] = useState<IntegrationsState | null>(null)
   const [dialog, setDialog] = useState<Provider | null>(null)
 
-  const load = useCallback(() => getIntegrations().then(setState).catch(() => toast.error("Could not load integrations")), [])
+  const load = useCallback(
+    () =>
+      getIntegrations()
+        .then(setState)
+        .catch(() => toast.error("Could not load integrations")),
+    [],
+  )
   useEffect(() => {
     load()
   }, [load])
@@ -69,7 +79,11 @@ function Integrations() {
       </p>
 
       {!state ? (
-        <div className="grid gap-4 sm:grid-cols-2">{ORDER.map((p) => <div key={p} className="h-40 animate-pulse rounded-xl bg-background-secondary" />)}</div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {ORDER.map((p) => (
+            <div key={p} className="h-40 animate-pulse rounded-xl bg-background-secondary" />
+          ))}
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {ORDER.map((p) => (
@@ -95,7 +109,19 @@ function Integrations() {
   )
 }
 
-function IntegrationCard({ provider, state, isAdmin, onConnect, onChange }: { provider: Provider; state: IntegrationsState; isAdmin: boolean; onConnect: () => void; onChange: () => void }) {
+function IntegrationCard({
+  provider,
+  state,
+  isAdmin,
+  onConnect,
+  onChange,
+}: {
+  provider: Provider
+  state: IntegrationsState
+  isAdmin: boolean
+  onConnect: () => void
+  onChange: () => void
+}) {
   const { name, blurb, Logo } = INFO[provider]
   const conn = state.connected[provider]
   const cfg = (conn?.config ?? {}) as Record<string, unknown>
@@ -115,11 +141,16 @@ function IntegrationCard({ provider, state, isAdmin, onConnect, onChange }: { pr
   return (
     <div className="flex flex-col rounded-xl border border-border p-5">
       <div className="mb-3 flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-lg border border-border bg-background-secondary text-foreground"><Logo className="h-5 w-5" /></span>
+        <span className="grid h-10 w-10 place-items-center rounded-lg border border-border bg-background-secondary text-foreground">
+          <Logo className="h-5 w-5" />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="font-medium">{name}</p>
           {conn ? (
-            <p className="flex items-center gap-1 text-xs text-emerald-500"><Check className="h-3.5 w-3.5" />Connected{accountLabel(provider, cfg)}</p>
+            <p className="flex items-center gap-1 text-xs text-emerald-500">
+              <Check className="h-3.5 w-3.5" />
+              Connected{accountLabel(provider, cfg)}
+            </p>
           ) : (
             <p className="text-xs text-foreground-muted">{available ? "Not connected" : "Coming soon"}</p>
           )}
@@ -145,13 +176,17 @@ function IntegrationCard({ provider, state, isAdmin, onConnect, onChange }: { pr
           )}
         </div>
       ) : (
-        <Button
-          variant="outline"
-          disabled={!isAdmin || !available || busy}
-          onClick={provider === "github" ? connectGithub : onConnect}
-          className="self-start"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : provider === "github" ? <>Install on GitHub<ExternalLink className="ml-1.5 h-3.5 w-3.5" /></> : `Connect ${name}`}
+        <Button variant="outline" disabled={!isAdmin || !available || busy} onClick={provider === "github" ? connectGithub : onConnect} className="self-start">
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : provider === "github" ? (
+            <>
+              Install on GitHub
+              <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+            </>
+          ) : (
+            `Connect ${name}`
+          )}
         </Button>
       )}
     </div>
@@ -163,7 +198,8 @@ function accountLabel(provider: Provider, cfg: Record<string, unknown>) {
   return v ? ` · ${String(v).replace(/^https:\/\//, "")}` : ""
 }
 
-const pickBtn = "flex h-9 w-full items-center justify-between rounded-lg border border-border bg-background-secondary px-3 text-left text-sm outline-none disabled:opacity-60"
+const pickBtn =
+  "flex h-9 w-full items-center justify-between rounded-lg border border-border bg-background-secondary px-3 text-left text-sm outline-none disabled:opacity-60"
 
 function Defaults({ provider, cfg, isAdmin, onChange }: { provider: Provider; cfg: Record<string, unknown>; isAdmin: boolean; onChange: () => void }) {
   const [repos, setRepos] = useState<{ fullName: string }[] | null>(null)
@@ -181,15 +217,31 @@ function Defaults({ provider, cfg, isAdmin, onChange }: { provider: Provider; cf
     return (
       <div>
         <p className="mb-1 text-xs text-foreground-muted">Default repository</p>
-        <Menu onOpenChange={(o) => o && !repos && githubRepos().then(setRepos).catch(() => setRepos([]))}>
+        <Menu
+          onOpenChange={(o) =>
+            o &&
+            !repos &&
+            githubRepos()
+              .then(setRepos)
+              .catch(() => setRepos([]))
+          }
+        >
           <MenuTrigger disabled={!isAdmin} className={pickBtn}>
             <span className="truncate font-mono text-[13px]">{String(cfg.defaultRepo ?? "Choose a repository")}</span>
             <ChevronDown className="h-4 w-4 text-foreground-muted" />
           </MenuTrigger>
           <MenuContent className="max-h-72 w-[var(--radix-dropdown-menu-trigger-width)] overflow-auto">
-            {repos === null ? <p className="p-2 text-sm text-foreground-muted">Loading…</p> : repos.length === 0 ? <p className="p-2 text-sm text-foreground-muted">No repositories. Give the app access on GitHub.</p> : null}
+            {repos === null ? (
+              <p className="p-2 text-sm text-foreground-muted">Loading…</p>
+            ) : repos.length === 0 ? (
+              <p className="p-2 text-sm text-foreground-muted">No repositories. Give the app access on GitHub.</p>
+            ) : null}
             {repos?.map((r) => (
-              <MenuCheckItem key={r.fullName} checked={cfg.defaultRepo === r.fullName} onSelect={() => save({ defaultRepo: r.fullName }, `Default repository: ${r.fullName}`)}>
+              <MenuCheckItem
+                key={r.fullName}
+                checked={cfg.defaultRepo === r.fullName}
+                onSelect={() => save({ defaultRepo: r.fullName }, `Default repository: ${r.fullName}`)}
+              >
                 <span className="font-mono text-[13px]">{r.fullName}</span>
               </MenuCheckItem>
             ))}
@@ -211,7 +263,9 @@ function Defaults({ provider, cfg, isAdmin, onChange }: { provider: Provider; cf
           </MenuTrigger>
           <MenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
             {teams.map((t) => (
-              <MenuCheckItem key={t.id} checked={t.id === cfg.teamId} onSelect={() => save({ teamId: t.id }, `Default team: ${t.name}`)}>{t.key} · {t.name}</MenuCheckItem>
+              <MenuCheckItem key={t.id} checked={t.id === cfg.teamId} onSelect={() => save({ teamId: t.id }, `Default team: ${t.name}`)}>
+                {t.key} · {t.name}
+              </MenuCheckItem>
             ))}
           </MenuContent>
         </Menu>
@@ -230,7 +284,9 @@ function Defaults({ provider, cfg, isAdmin, onChange }: { provider: Provider; cf
           </MenuTrigger>
           <MenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
             {projects.map((p) => (
-              <MenuCheckItem key={p.key} checked={p.key === cfg.projectKey} onSelect={() => save({ projectKey: p.key }, `Default project: ${p.name}`)}>{p.key} · {p.name}</MenuCheckItem>
+              <MenuCheckItem key={p.key} checked={p.key === cfg.projectKey} onSelect={() => save({ projectKey: p.key }, `Default project: ${p.name}`)}>
+                {p.key} · {p.name}
+              </MenuCheckItem>
             ))}
           </MenuContent>
         </Menu>
@@ -252,7 +308,8 @@ function Defaults({ provider, cfg, isAdmin, onChange }: { provider: Provider; cf
               onClick={() => save({ events: on ? events.filter((x) => x !== e) : [...events, e] })}
               className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${on ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-foreground-muted"}`}
             >
-              {on && <Check className="h-3 w-3" />}{LABEL[e]}
+              {on && <Check className="h-3 w-3" />}
+              {LABEL[e]}
             </button>
           )
         })}
@@ -269,21 +326,31 @@ function ConnectDialog({ provider, onClose, onDone }: { provider: Exclude<Provid
   const help: Record<typeof provider, React.ReactNode> = {
     slack: (
       <ol className="list-decimal space-y-1 pl-5">
-        <li>In Slack, open <a className="text-primary underline" href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noreferrer">api.slack.com/apps</a> and create an app “BugSnap” (from scratch) in your workspace.</li>
-        <li>Turn on <b>Incoming Webhooks</b>, click <b>Add New Webhook to Workspace</b> and pick a channel.</li>
+        <li>
+          In Slack, open{" "}
+          <a className="text-primary underline" href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noreferrer">
+            api.slack.com/apps
+          </a>{" "}
+          and create an app “BugSnap” (from scratch) in your workspace.
+        </li>
+        <li>
+          Turn on <b>Incoming Webhooks</b>, click <b>Add New Webhook to Workspace</b> and pick a channel.
+        </li>
         <li>Copy the webhook URL and paste it here. We send a test message.</li>
       </ol>
     ),
     linear: (
       <p>
-        In Linear, open <b>Settings → Account → Security &amp; access → Personal API keys</b>, create a key named “BugSnap” and paste it here.
-        BugSnap also sets up a webhook so status changes sync back.
+        In Linear, open <b>Settings → Account → Security &amp; access → Personal API keys</b>, create a key named “BugSnap” and paste it here. BugSnap also sets
+        up a webhook so status changes sync back.
       </p>
     ),
     jira: (
       <p>
         Create an API token at{" "}
-        <a className="text-primary underline" href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer">id.atlassian.com → API tokens</a>
+        <a className="text-primary underline" href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noreferrer">
+          id.atlassian.com → API tokens
+        </a>
         , then enter your Jira site, the account email and the token. Tickets are created as that account.
       </p>
     ),
@@ -312,7 +379,9 @@ function ConnectDialog({ provider, onClose, onDone }: { provider: Exclude<Provid
               <Input placeholder="Channel name (optional, for your reference) e.g. #bugs" value={fields.channel ?? ""} onChange={set("channel")} />
             </>
           )}
-          {provider === "linear" && <Input autoFocus required type="password" placeholder="lin_api_…" value={fields.apiKey ?? ""} onChange={set("apiKey")} autoComplete="off" />}
+          {provider === "linear" && (
+            <Input autoFocus required type="password" placeholder="lin_api_…" value={fields.apiKey ?? ""} onChange={set("apiKey")} autoComplete="off" />
+          )}
           {provider === "jira" && (
             <>
               <Input autoFocus required placeholder="acme.atlassian.net" value={fields.site ?? ""} onChange={set("site")} />
@@ -321,8 +390,12 @@ function ConnectDialog({ provider, onClose, onDone }: { provider: Exclude<Provid
             </>
           )}
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={busy}>{busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}Connect</Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}Connect
+            </Button>
           </div>
           <p className="text-xs text-foreground-muted">Keys are stored encrypted and only used for this workspace.</p>
         </form>
@@ -364,18 +437,32 @@ function VerifyInCi() {
             <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">GitHub Actions</span>
           </p>
           <p className="mt-1 max-w-xl text-sm text-foreground-secondary">
-            Write <span className="font-mono text-[13px] text-foreground">Fixes BUG-12</span> in a pull request. BugSnap replays the recorded steps against that build and
-            tells you if the bug is really gone: a comment on the PR, a badge on the bug, and the bug moves to <b>Fix ready</b>.
+            Write <span className="font-mono text-[13px] text-foreground">Fixes BUG-12</span> in a pull request. BugSnap replays the recorded steps against that
+            build and tells you if the bug is really gone: a comment on the PR, a badge on the bug, and the bug moves to <b>Fix ready</b>.
           </p>
         </div>
       </div>
       <ol className="mt-4 space-y-1.5 text-sm text-foreground-secondary">
-        <li>1. Create an API key on the <a href="/dashboard/settings#agents" className="text-primary hover:underline">AI agents</a> page.</li>
-        <li>2. In your GitHub repo, add it as a secret named <span className="font-mono text-[13px] text-foreground">BUGSNAP_API_KEY</span> (Settings → Secrets and variables → Actions).</li>
-        <li>3. Add this file as <span className="font-mono text-[13px] text-foreground">.github/workflows/bugsnap.yml</span> and set <span className="font-mono text-[13px] text-foreground">base-url</span> to where your app runs in CI.</li>
+        <li>
+          1. Create an API key on the{" "}
+          <a href="/dashboard/settings#agents" className="text-primary hover:underline">
+            AI agents
+          </a>{" "}
+          page.
+        </li>
+        <li>
+          2. In your GitHub repo, add it as a secret named <span className="font-mono text-[13px] text-foreground">BUGSNAP_API_KEY</span> (Settings → Secrets
+          and variables → Actions).
+        </li>
+        <li>
+          3. Add this file as <span className="font-mono text-[13px] text-foreground">.github/workflows/bugsnap.yml</span> and set{" "}
+          <span className="font-mono text-[13px] text-foreground">base-url</span> to where your app runs in CI.
+        </li>
       </ol>
       <div className="relative mt-3">
-        <pre className="overflow-x-auto rounded-lg border border-border bg-background-secondary p-4 font-mono text-[12px] leading-5 text-foreground-secondary">{WORKFLOW}</pre>
+        <pre className="overflow-x-auto rounded-lg border border-border bg-background-secondary p-4 font-mono text-[12px] leading-5 text-foreground-secondary">
+          {WORKFLOW}
+        </pre>
         <button
           onClick={async () => {
             await navigator.clipboard.writeText(WORKFLOW)

@@ -15,7 +15,9 @@ export function GettingStarted() {
 
   useEffect(() => {
     setHidden(localStorage.getItem(HIDE_KEY) === "1")
-    getOnboarding().then(setData).catch(() => undefined)
+    getOnboarding()
+      .then(setData)
+      .catch(() => undefined)
   }, [])
 
   if (!data || hidden) return null

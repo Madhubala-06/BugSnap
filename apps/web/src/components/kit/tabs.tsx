@@ -16,7 +16,7 @@ export function TabsTrigger({ className, ...props }: TB.TabsTriggerProps) {
       className={cn(
         "-mb-px flex items-center gap-1.5 border-b-2 border-transparent px-2.5 py-2 text-sm text-foreground-muted transition-colors hover:text-foreground-secondary",
         "data-[state=active]:border-primary data-[state=active]:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
-        className
+        className,
       )}
       {...props}
     />

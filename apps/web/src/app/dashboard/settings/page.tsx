@@ -102,7 +102,9 @@ export default function SettingsPage() {
               }}
             >
               <Input value={name} onChange={(e) => setName(e.target.value)} aria-label="Your name" className="max-w-xs" />
-              <Button type="submit" variant="outline" disabled={!name.trim() || name === me?.name}>Save</Button>
+              <Button type="submit" variant="outline" disabled={!name.trim() || name === me?.name}>
+                Save
+              </Button>
             </form>
             <label className="flex cursor-pointer items-start gap-3 text-sm">
               <input
@@ -142,7 +144,11 @@ export default function SettingsPage() {
               }}
             >
               <Input value={wsName} onChange={(e) => setWsName(e.target.value)} disabled={!isAdmin} aria-label="Workspace name" className="max-w-xs" />
-              {isAdmin && <Button type="submit" variant="outline" disabled={!wsName.trim() || wsName === me?.workspace.name}>Rename</Button>}
+              {isAdmin && (
+                <Button type="submit" variant="outline" disabled={!wsName.trim() || wsName === me?.workspace.name}>
+                  Rename
+                </Button>
+              )}
             </form>
           </CardContent>
         </Card>
@@ -163,7 +169,10 @@ export default function SettingsPage() {
                     Install BugSnap for Chrome
                   </a>
                 ) : (
-                  <>Install the BugSnap extension (load the built folder in <span className="font-mono text-foreground">chrome://extensions</span> with Developer mode on).</>
+                  <>
+                    Install the BugSnap extension (load the built folder in <span className="font-mono text-foreground">chrome://extensions</span> with
+                    Developer mode on).
+                  </>
                 )}
               </li>
               <li>
@@ -214,7 +223,11 @@ export default function SettingsPage() {
                 </Button>
               )}
             </div>
-            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
             <p className="text-xs text-foreground-muted">
               {savedHint
                 ? "Your key is stored encrypted and only used for this workspace. No BugSnap limit."
@@ -233,7 +246,9 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>GitHub</CardTitle>
-            <CardDescription>The repository for the &ldquo;GitHub issue&rdquo; button on reports. Nothing is posted for you: GitHub opens with the issue filled in.</CardDescription>
+            <CardDescription>
+              The repository for the &ldquo;GitHub issue&rdquo; button on reports. Nothing is posted for you: GitHub opens with the issue filled in.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form
@@ -250,10 +265,25 @@ export default function SettingsPage() {
                 }
               }}
             >
-              <Input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="owner/repo" aria-label="GitHub repository" className="max-w-xs" disabled={!isAdmin} />
-              {isAdmin && <Button type="submit" variant="outline">Save</Button>}
+              <Input
+                value={repo}
+                onChange={(e) => setRepo(e.target.value)}
+                placeholder="owner/repo"
+                aria-label="GitHub repository"
+                className="max-w-xs"
+                disabled={!isAdmin}
+              />
+              {isAdmin && (
+                <Button type="submit" variant="outline">
+                  Save
+                </Button>
+              )}
             </form>
-            {repoMsg && <p className="mt-2 text-sm text-foreground-secondary" role="status">{repoMsg}</p>}
+            {repoMsg && (
+              <p className="mt-2 text-sm text-foreground-secondary" role="status">
+                {repoMsg}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -307,7 +337,11 @@ function YourData({ email }: { email: string }) {
 
   const deleteAccount = async () => {
     setDeleting(true)
-    const res = await authFetch(`${API_URL}/account`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmEmail: typed }) })
+    const res = await authFetch(`${API_URL}/account`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmEmail: typed }),
+    })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
       toast.error(typeof data.message === "string" ? data.message : "Could not delete your account")
@@ -331,8 +365,8 @@ function YourData({ email }: { email: string }) {
         <div className="rounded-lg border border-red-500/25 bg-red-500/[0.04] p-4">
           <p className="text-sm font-medium text-foreground">Delete account</p>
           <p className="mt-1 text-sm text-foreground-muted">
-            Workspaces where you are the only member are deleted with all their bugs, videos and screenshots. In shared workspaces your bug reports
-            stay for the team (without your name). This cannot be undone.
+            Workspaces where you are the only member are deleted with all their bugs, videos and screenshots. In shared workspaces your bug reports stay for the
+            team (without your name). This cannot be undone.
           </p>
           {!confirming ? (
             <Button variant="outline" onClick={() => setConfirming(true)} className="mt-3 gap-2 border-red-500/40 text-red-400 hover:bg-red-500/10">
@@ -340,11 +374,25 @@ function YourData({ email }: { email: string }) {
             </Button>
           ) : (
             <div className="mt-3 space-y-2">
-              <p className="text-sm text-foreground-secondary">Type <span className="font-mono text-foreground">{email}</span> to confirm.</p>
+              <p className="text-sm text-foreground-secondary">
+                Type <span className="font-mono text-foreground">{email}</span> to confirm.
+              </p>
               <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={email} autoFocus />
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => { setConfirming(false); setTyped("") }}>Cancel</Button>
-                <Button onClick={deleteAccount} disabled={deleting || typed.trim().toLowerCase() !== email.toLowerCase()} className="gap-2 bg-red-600 text-white hover:bg-red-700">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setConfirming(false)
+                    setTyped("")
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={deleteAccount}
+                  disabled={deleting || typed.trim().toLowerCase() !== email.toLowerCase()}
+                  className="gap-2 bg-red-600 text-white hover:bg-red-700"
+                >
                   {deleting && <Loader2 className="h-4 w-4 animate-spin" />}Delete forever
                 </Button>
               </div>
@@ -393,7 +441,9 @@ function PlanUsage({ isAdmin }: { isAdmin: boolean }) {
   const [u, setU] = useState<Usage | null>(null)
   const [joining, setJoining] = useState(false)
   useEffect(() => {
-    authFetch(`${API_URL}/workspace/usage`).then(async (r) => r.ok && setU(await r.json())).catch(() => undefined)
+    authFetch(`${API_URL}/workspace/usage`)
+      .then(async (r) => r.ok && setU(await r.json()))
+      .catch(() => undefined)
   }, [])
   if (!u) return null
   const resets = new Date(u.resetsOn).toLocaleDateString(undefined, { day: "numeric", month: "short" })
@@ -409,8 +459,18 @@ function PlanUsage({ isAdmin }: { isAdmin: boolean }) {
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-3">
           <Meter label="Bug reports this month" used={u.reports.used} limit={u.reports.limit} />
-          <Meter label="People" used={u.members.used + u.members.pending} limit={u.members.limit} note={u.members.pending ? `${u.members.pending} invited` : undefined} />
-          <Meter label="AI write-ups" used={u.ai.used} limit={u.ownAiKey ? null : u.ai.limit} note={u.ownAiKey ? "Your own Gemini key: no BugSnap limit" : undefined} />
+          <Meter
+            label="People"
+            used={u.members.used + u.members.pending}
+            limit={u.members.limit}
+            note={u.members.pending ? `${u.members.pending} invited` : undefined}
+          />
+          <Meter
+            label="AI write-ups"
+            used={u.ai.used}
+            limit={u.ownAiKey ? null : u.ai.limit}
+            note={u.ownAiKey ? "Your own Gemini key: no BugSnap limit" : undefined}
+          />
         </div>
         <p className="text-xs text-foreground-muted">
           Videos are kept {u.plan.videoDays ?? "forever"}

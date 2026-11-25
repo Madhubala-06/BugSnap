@@ -26,7 +26,12 @@ interface Info {
 
 const info = (r: ReportLike) => (r.browserInfo ?? {}) as Info
 const strip = (html?: string | null) =>
-  (html ?? "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim()
+  (html ?? "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim()
 const q = (s: string) => JSON.stringify(s)
 
 /** Map `Clicked button "Pay now"` to a Playwright locator. */
@@ -143,7 +148,7 @@ export function toFixPrompt(report: ReportLike, appUrl?: string): string {
     "",
     "```ts",
     toPlaywrightTest(report).trim(),
-    "```"
+    "```",
   )
   return parts.join("\n")
 }
@@ -170,7 +175,8 @@ export function toIssueMarkdown(report: ReportLike & { number?: number | null },
   const parts: string[] = []
   const description = strip(report.description)
   if (description) parts.push(description, "")
-  if (report.stepsToReproduce?.length) parts.push("**Steps to reproduce**", ...report.stepsToReproduce.map((s, i) => `${i + 1}. ${s.replace(/^Step \d+:\s*/i, "")}`), "")
+  if (report.stepsToReproduce?.length)
+    parts.push("**Steps to reproduce**", ...report.stepsToReproduce.map((s, i) => `${i + 1}. ${s.replace(/^Step \d+:\s*/i, "")}`), "")
   if (report.expectedResult) parts.push(`**Expected:** ${report.expectedResult}`)
   if (report.actualResult) parts.push(`**Actual:** ${report.actualResult}`)
   if (report.expectedResult || report.actualResult) parts.push("")
@@ -183,7 +189,11 @@ export function toIssueMarkdown(report: ReportLike & { number?: number | null },
     }
     parts.push("```", "")
   }
-  const env = [page?.url && `Page: ${page.url}`, page?.userAgent && `Browser: ${(page.userAgent.match(/Chrome\/\d+/) ?? [page.userAgent.slice(0, 60)])[0]}`, page?.viewport?.width && `Viewport: ${page.viewport.width}×${page.viewport.height}`].filter(Boolean)
+  const env = [
+    page?.url && `Page: ${page.url}`,
+    page?.userAgent && `Browser: ${(page.userAgent.match(/Chrome\/\d+/) ?? [page.userAgent.slice(0, 60)])[0]}`,
+    page?.viewport?.width && `Viewport: ${page.viewport.width}×${page.viewport.height}`,
+  ].filter(Boolean)
   if (env.length) parts.push(env.join(" · "), "")
   const media = [recordingUrl && `[Video](${recordingUrl})`, ...screenshotUrls.slice(0, 4).map((u, i) => `[Screenshot ${i + 1}](${u})`)].filter(Boolean)
   if (media.length) parts.push(media.join(" · "), "")

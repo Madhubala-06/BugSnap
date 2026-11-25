@@ -13,7 +13,10 @@ let isCapturing = false
 // Instant replay: when on, keep sending events to the extension's 2-minute buffer even when not recording.
 let replayOn = false
 
-chrome.storage.local.get("instantReplay").then((r) => setReplay(Boolean(r.instantReplay))).catch(() => undefined)
+chrome.storage.local
+  .get("instantReplay")
+  .then((r) => setReplay(Boolean(r.instantReplay)))
+  .catch(() => undefined)
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && "instantReplay" in changes) setReplay(Boolean(changes.instantReplay.newValue))
 })

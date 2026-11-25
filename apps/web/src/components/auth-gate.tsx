@@ -8,8 +8,7 @@ import { getMe, getToken, type Me } from "@/lib/auth"
 const MeContext = createContext<Me | null>(null)
 export const useMe = () => useContext(MeContext)
 
-const withTimeout = <T,>(p: Promise<T>, ms: number) =>
-  Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))])
+const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))])
 
 /** Shows the dashboard only to signed-in users. */
 export function AuthGate({ children }: { children: React.ReactNode }) {

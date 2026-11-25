@@ -4,15 +4,7 @@ import { useEffect, useState } from "react"
 import { Bot, Check, Github, Link2, Loader2, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  analyzeReport,
-  getBugReport,
-  getAiStatus,
-  getReportText,
-  saveGithubRepo,
-  setReportShared,
-  type BugReport,
-} from "@/lib/api"
+import { analyzeReport, getBugReport, getAiStatus, getReportText, saveGithubRepo, setReportShared, type BugReport } from "@/lib/api"
 import { reportToMarkdown } from "@/lib/export"
 
 /** GitHub's "new issue" page with title and body filled in. No GitHub login needed on our side. */
@@ -32,7 +24,9 @@ export function ReportActions({ report, onChange }: { report: BugReport; onChang
   const [repoInput, setRepoInput] = useState("")
 
   useEffect(() => {
-    getAiStatus().then((s) => setRepo(s.githubRepo)).catch(() => undefined)
+    getAiStatus()
+      .then((s) => setRepo(s.githubRepo))
+      .catch(() => undefined)
   }, [])
 
   // While the AI writes in the background, check every few seconds.

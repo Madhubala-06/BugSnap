@@ -59,7 +59,8 @@ const TOOLS = [
   },
   {
     name: "get_fix_prompt",
-    description: "Everything a coding agent needs to fix the bug in one prompt: exact errors and stacks, failing requests, timeline, likely cause, and the regression test.",
+    description:
+      "Everything a coding agent needs to fix the bug in one prompt: exact errors and stacks, failing requests, timeline, likely cause, and the regression test.",
     inputSchema: { type: "object", properties: { id: ID_SCHEMA }, required: ["id"] },
     annotations: { readOnlyHint: true },
   },
@@ -75,7 +76,12 @@ const TOOLS = [
       "After you ran the bug's Playwright test (get_playwright_test) against your fix, report the result. 'passed' moves the bug to FIX_READY and shows 'Fix verified' in BugSnap.",
     inputSchema: {
       type: "object",
-      properties: { id: ID_SCHEMA, status: { type: "string", enum: ["passed", "failed"] }, details: { type: "string", description: "Test output or what changed" }, branch: { type: "string" } },
+      properties: {
+        id: ID_SCHEMA,
+        status: { type: "string", enum: ["passed", "failed"] },
+        details: { type: "string", description: "Test output or what changed" },
+        branch: { type: "string" },
+      },
       required: ["id", "status"],
     },
     annotations: { destructiveHint: false },
@@ -88,8 +94,13 @@ const TOOLS = [
   },
   {
     name: "open_fix_pull_request",
-    description: "Ask BugSnap's own AI to write a small fix and open a draft pull request in the connected GitHub repo (needs the GitHub integration). Prefer fixing it yourself if you have the code.",
-    inputSchema: { type: "object", properties: { id: ID_SCHEMA, repo: { type: "string", description: "owner/name, defaults to the workspace's default repo" } }, required: ["id"] },
+    description:
+      "Ask BugSnap's own AI to write a small fix and open a draft pull request in the connected GitHub repo (needs the GitHub integration). Prefer fixing it yourself if you have the code.",
+    inputSchema: {
+      type: "object",
+      properties: { id: ID_SCHEMA, repo: { type: "string", description: "owner/name, defaults to the workspace's default repo" } },
+      required: ["id"],
+    },
     annotations: { destructiveHint: false },
   },
 ]
@@ -101,7 +112,7 @@ export class McpController {
   constructor(
     private readonly reports: ReportsService,
     private readonly prisma: PrismaService,
-    private readonly fixes: AiFixService
+    private readonly fixes: AiFixService,
   ) {}
 
   /** Accept "BUG-12", "12" or the internal id. */
@@ -146,7 +157,8 @@ export class McpController {
             protocolVersion: (req.params?.protocolVersion as string) || PROTOCOL,
             capabilities: { tools: { listChanged: false } },
             serverInfo: { name: "bugsnap", version: "1.0.0" },
-            instructions: "BugSnap holds bug reports recorded in real browsers. Use get_bug_report to get exact errors, the timeline and a Playwright test before changing code.",
+            instructions:
+              "BugSnap holds bug reports recorded in real browsers. Use get_bug_report to get exact errors, the timeline and a Playwright test before changing code.",
           })
         case "ping":
           return ok({})
@@ -178,8 +190,11 @@ export class McpController {
         if (!rows.length) return text("No bug reports match.")
         return text(
           rows
-            .map((r) => `- ${r.id}${r.number ? ` (BUG-${r.number})` : ""} | ${r.severity.toLowerCase()} | ${r.status.toLowerCase()} | ${r.title}${r.duplicateCount > 1 ? ` (seen ${r.duplicateCount} times)` : ""}${r.url ? ` | ${r.url}` : ""}`)
-            .join("\n")
+            .map(
+              (r) =>
+                `- ${r.id}${r.number ? ` (BUG-${r.number})` : ""} | ${r.severity.toLowerCase()} | ${r.status.toLowerCase()} | ${r.title}${r.duplicateCount > 1 ? ` (seen ${r.duplicateCount} times)` : ""}${r.url ? ` | ${r.url}` : ""}`,
+            )
+            .join("\n"),
         )
       }
       case "get_bug_report":
@@ -207,15 +222,33 @@ export class McpController {
         const status = args.status === "passed" ? "passed" : "failed"
         const report = await this.reports.findOne(auth.workspaceId, id)
         const details = typeof args.details === "string" ? args.details.slice(0, 4000) : null
-        await this.prisma.verification.create({ data: { reportId: id, status, details, repo: typeof args.branch === "string" ? `agent · ${args.branch.slice(0, 100)}` : "agent" } })
+        await this.prisma.verification.create({
+          data: { reportId: id, status, details, repo: typeof args.branch === "string" ? `agent · ${args.branch.slice(0, 100)}` : "agent" },
+        })
         await logActivity(this.prisma, id, auth.userId, "verified", { status, agent: true })
-        if (status === "passed" && (report.status === "OPEN" || report.status === "IN_PROGRESS")) await this.reports.updateStatus(auth.workspaceId, id, "FIX_READY", auth.userId)
-        return text(status === "passed" ? `Recorded: fix verified. BUG-${report.number} is now FIX_READY.` : `Recorded: the bug still reproduces on BUG-${report.number}.`)
+        if (status === "passed" && (report.status === "OPEN" || report.status === "IN_PROGRESS"))
+          await this.reports.updateStatus(auth.workspaceId, id, "FIX_READY", auth.userId)
+        return text(
+          status === "passed"
+            ? `Recorded: fix verified. BUG-${report.number} is now FIX_READY.`
+            : `Recorded: the bug still reproduces on BUG-${report.number}.`,
+        )
       }
       case "get_verification_status": {
-        const rows = await this.prisma.verification.findMany({ where: { reportId: id, report: { workspaceId: auth.workspaceId } }, orderBy: { createdAt: "desc" }, take: 5 })
+        const rows = await this.prisma.verification.findMany({
+          where: { reportId: id, report: { workspaceId: auth.workspaceId } },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        })
         if (!rows.length) return text("No test runs recorded yet. Run get_playwright_test against your fix, then report_test_result.")
-        return text(rows.map((v) => `- ${v.createdAt.toISOString()} ${v.status}${v.prNumber ? ` on PR #${v.prNumber}` : ""}${v.repo ? ` (${v.repo})` : ""}${v.prUrl ? ` ${v.prUrl}` : ""}${v.details ? `\n  ${v.details.split("\n").slice(0, 4).join("\n  ")}` : ""}`).join("\n"))
+        return text(
+          rows
+            .map(
+              (v) =>
+                `- ${v.createdAt.toISOString()} ${v.status}${v.prNumber ? ` on PR #${v.prNumber}` : ""}${v.repo ? ` (${v.repo})` : ""}${v.prUrl ? ` ${v.prUrl}` : ""}${v.details ? `\n  ${v.details.split("\n").slice(0, 4).join("\n  ")}` : ""}`,
+            )
+            .join("\n"),
+        )
       }
       case "open_fix_pull_request": {
         if (auth.role === "guest") return noGuests()

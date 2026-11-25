@@ -9,8 +9,8 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy policy" updated="24 November 2026">
       <p>
-        BugSnap helps you record a bug in your browser and turn it into a report. This page explains, in plain words, what we collect, why, and
-        what we never collect.
+        BugSnap helps you record a bug in your browser and turn it into a report. This page explains, in plain words, what we collect, why, and what we never
+        collect.
       </p>
 
       <h2>What the Chrome extension collects</h2>
@@ -31,8 +31,8 @@ export default function PrivacyPage() {
         <li>Anything while you are not recording.</li>
       </ul>
       <p>
-        Before a report leaves your browser, the extension hides values that look like secrets: tokens and keys in web addresses, bearer tokens,
-        JSON web tokens and common API keys are replaced with <code>[hidden]</code>. Please still avoid recording screens with private data.
+        Before a report leaves your browser, the extension hides values that look like secrets: tokens and keys in web addresses, bearer tokens, JSON web tokens
+        and common API keys are replaced with <code>[hidden]</code>. Please still avoid recording screens with private data.
       </p>
 
       <h2>Your account</h2>
@@ -40,10 +40,10 @@ export default function PrivacyPage() {
 
       <h2>AI write-ups</h2>
       <p>
-        If AI write-ups are on, the screenshots, the captured logs and the page details of a report are sent to Google&apos;s Gemini API to write
-        the summary, steps and likely cause. If you use BugSnap&apos;s free AI allowance, it runs on a free Gemini plan, and Google may use that
-        content to improve its products. If you add your own Gemini key in Settings, your key&apos;s terms with Google apply instead. You can
-        turn AI off by removing your key and not using the free allowance.
+        If AI write-ups are on, the screenshots, the captured logs and the page details of a report are sent to Google&apos;s Gemini API to write the summary,
+        steps and likely cause. If you use BugSnap&apos;s free AI allowance, it runs on a free Gemini plan, and Google may use that content to improve its
+        products. If you add your own Gemini key in Settings, your key&apos;s terms with Google apply instead. You can turn AI off by removing your key and not
+        using the free allowance.
       </p>
 
       <h2>Where data is stored</h2>
@@ -55,14 +55,14 @@ export default function PrivacyPage() {
 
       <h2>Sharing</h2>
       <p>
-        Reports are private to your workspace. If you create a share link, anyone with that link can view that one report until you press
-        &ldquo;Stop sharing&rdquo;. The GitHub button only opens GitHub with text filled in. BugSnap does not post anything for you.
+        Reports are private to your workspace. If you create a share link, anyone with that link can view that one report until you press &ldquo;Stop
+        sharing&rdquo;. The GitHub button only opens GitHub with text filled in. BugSnap does not post anything for you.
       </p>
 
       <h2>Keeping and deleting data</h2>
       <p>
-        Data stays until you delete it. Deleting a report also deletes its video and screenshots. To delete your whole account and workspace,
-        email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> and we will do it within 30 days.
+        Data stays until you delete it. Deleting a report also deletes its video and screenshots. To delete your whole account and workspace, email{" "}
+        <a href={`mailto:${CONTACT}`}>{CONTACT}</a> and we will do it within 30 days.
       </p>
 
       <h2>We do not sell data</h2>

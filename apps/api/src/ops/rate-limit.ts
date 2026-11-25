@@ -16,7 +16,9 @@ export const RATE_LIMITS = "rateLimits"
 export const RateLimit = (...rules: LimitRule[]) => SetMetadata(RATE_LIMITS, rules)
 
 export function clientIp(req: { headers?: Record<string, unknown>; ip?: string; socket?: { remoteAddress?: string } }) {
-  const fwd = String(req.headers?.["x-forwarded-for"] ?? "").split(",")[0].trim()
+  const fwd = String(req.headers?.["x-forwarded-for"] ?? "")
+    .split(",")[0]
+    .trim()
   return fwd || String(req.headers?.["x-real-ip"] ?? "") || req.ip || req.socket?.remoteAddress || "unknown"
 }
 
@@ -33,7 +35,10 @@ export async function hit(prisma: PrismaService, key: string, windowSec: number)
 
 export function tooMany(windowSec: number) {
   const mins = Math.ceil(windowSec / 60)
-  return new HttpException(`Too many requests. Please wait ${mins >= 60 ? `${Math.round(mins / 60)} hour${mins >= 120 ? "s" : ""}` : `${mins} minute${mins > 1 ? "s" : ""}`} and try again.`, HttpStatus.TOO_MANY_REQUESTS)
+  return new HttpException(
+    `Too many requests. Please wait ${mins >= 60 ? `${Math.round(mins / 60)} hour${mins >= 120 ? "s" : ""}` : `${mins} minute${mins > 1 ? "s" : ""}`} and try again.`,
+    HttpStatus.TOO_MANY_REQUESTS,
+  )
 }
 
 /** Runs after the sign-in guard, so it can limit per user and per workspace too. */
@@ -41,7 +46,7 @@ export function tooMany(windowSec: number) {
 export class RateLimitGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext) {

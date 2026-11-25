@@ -3,7 +3,9 @@ import type { ReportStatus, Severity } from "@/lib/api"
 
 export function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <kbd className={cn("rounded border border-b-2 border-border bg-background-secondary px-1 font-mono text-[10.5px] leading-4 text-foreground-muted", className)}>
+    <kbd
+      className={cn("rounded border border-b-2 border-border bg-background-secondary px-1 font-mono text-[10.5px] leading-4 text-foreground-muted", className)}
+    >
       {children}
     </kbd>
   )
@@ -58,7 +60,9 @@ export const PRIORITY_ORDER = ["urgent", "high", "medium", "low", "none"]
 export function PriorityIcon({ priority, className }: { priority: string; className?: string }) {
   if (priority === "urgent")
     return (
-      <span className={cn("inline-grid h-3.5 w-3.5 place-items-center rounded-[3px] bg-red-500 text-[10px] font-bold leading-none text-white", className)}>!</span>
+      <span className={cn("inline-grid h-3.5 w-3.5 place-items-center rounded-[3px] bg-red-500 text-[10px] font-bold leading-none text-white", className)}>
+        !
+      </span>
     )
   const level = priority === "high" ? 3 : priority === "medium" ? 2 : priority === "low" ? 1 : 0
   if (!level) return <span className={cn("inline-block h-3.5 w-3.5 text-center leading-[14px] text-foreground-muted", className)}>–</span>

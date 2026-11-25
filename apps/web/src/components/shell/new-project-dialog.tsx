@@ -27,7 +27,10 @@ export function NewProjectDialog() {
             try {
               const project = await createProject(
                 name,
-                hosts.split(/[\s,]+/).map((h) => h.trim()).filter(Boolean)
+                hosts
+                  .split(/[\s,]+/)
+                  .map((h) => h.trim())
+                  .filter(Boolean),
               )
               await refreshProjects()
               toast.success(`Project “${project.name}” created`)
@@ -52,8 +55,12 @@ export function NewProjectDialog() {
             <span className="mt-1 block text-xs text-foreground-muted">Separate with commas. Existing bugs from these addresses are moved in too.</span>
           </label>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setNewProjectOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={busy || !name.trim()}>Create project</Button>
+            <Button type="button" variant="outline" onClick={() => setNewProjectOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy || !name.trim()}>
+              Create project
+            </Button>
           </div>
         </form>
       </DialogContent>

@@ -3,21 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import {
-  Bot,
-  ChevronDown,
-  Copy,
-  FlaskConical,
-  Github,
-  Globe,
-  Image as ImageIcon,
-  Layers,
-  Link2,
-  Loader2,
-  MoreHorizontal,
-  Sparkles,
-  Trash2,
-} from "lucide-react"
+import { Bot, ChevronDown, Copy, FlaskConical, Github, Globe, Image as ImageIcon, Layers, Link2, Loader2, MoreHorizontal, Sparkles, Trash2 } from "lucide-react"
 import {
   analyzeReport,
   createExternalIssue,
@@ -57,12 +43,26 @@ import { ActivityFeed } from "@/components/report/activity-feed"
 import { GithubMark, JiraMark, LinearMark } from "@/components/brand/logos"
 import Link from "next/link"
 
-const strip = (html?: string | null) => (html ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+const strip = (html?: string | null) =>
+  (html ?? "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
 
 function shortBrowser(ua?: string) {
   if (!ua) return ""
   const chrome = ua.match(/Chrome\/(\d+)/)
-  const os = /Mac OS X/.test(ua) ? "macOS" : /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /Linux/.test(ua) ? "Linux" : /iPhone|iPad/.test(ua) ? "iOS" : ""
+  const os = /Mac OS X/.test(ua)
+    ? "macOS"
+    : /Windows/.test(ua)
+      ? "Windows"
+      : /Android/.test(ua)
+        ? "Android"
+        : /Linux/.test(ua)
+          ? "Linux"
+          : /iPhone|iPad/.test(ua)
+            ? "iOS"
+            : ""
   return [chrome ? `Chrome ${chrome[1]}` : "", os].filter(Boolean).join(" · ")
 }
 
@@ -107,8 +107,12 @@ export default function ReportPage() {
 
   useEffect(() => {
     load()
-    getAiStatus().then((s) => setRepo(s.githubRepo)).catch(() => undefined)
-    getIntegrations().then(setTools).catch(() => undefined)
+    getAiStatus()
+      .then((s) => setRepo(s.githubRepo))
+      .catch(() => undefined)
+    getIntegrations()
+      .then(setTools)
+      .catch(() => undefined)
   }, [load])
 
   // Jira has no webhooks for API tokens: refresh linked ticket status when the page opens.
@@ -124,10 +128,12 @@ export default function ReportPage() {
   useCrumbs(
     report
       ? [
-          ...(report.project ? [{ label: report.project.name, href: `/dashboard/reports?project=${report.project.id}` }] : [{ label: "All reports", href: "/dashboard/reports?view=all" }]),
+          ...(report.project
+            ? [{ label: report.project.name, href: `/dashboard/reports?project=${report.project.id}` }]
+            : [{ label: "All reports", href: "/dashboard/reports?view=all" }]),
           { label: bugId(report.number), mono: true },
         ]
-      : []
+      : [],
   )
 
   // AI write-up in the background: poll while pending, retry once if it failed earlier.
@@ -182,11 +188,13 @@ export default function ReportPage() {
   useEffect(() => {
     if (!report || autoRetried.current || report.aiStatus !== "failed" || !canEdit) return
     autoRetried.current = true
-    analyzeReport(report.id).then((r) => r.ok && merge({ aiStatus: "pending" })).catch(() => undefined)
+    analyzeReport(report.id)
+      .then((r) => r.ok && merge({ aiStatus: "pending" }))
+      .catch(() => undefined)
   }, [report, merge])
 
   const info = report?.browserInfo ?? {}
-  const logs = useMemo(() => (report?.session?.logs?.length ? report.session.logs : info.logs ?? []), [report, info.logs])
+  const logs = useMemo(() => (report?.session?.logs?.length ? report.session.logs : (info.logs ?? [])), [report, info.logs])
   const events = useMemo(() => timeEvents(logs, info.startedAt), [logs, info.startedAt])
   const keyMoments = events.filter((e) => e.kind === "error" || e.kind === "click" || e.kind === "input" || (e.kind === "nav" && e.t > 0.5))
   const consoleEvents = events.filter((e) => e.log.type === "CONSOLE" || e.log.type === "ERROR")
@@ -199,7 +207,9 @@ export default function ReportPage() {
     return (
       <div className="p-10 text-center">
         <p className="text-foreground">This report does not exist or you do not have access.</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/reports")}>Back to reports</Button>
+        <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard/reports")}>
+          Back to reports
+        </Button>
       </div>
     )
   }
@@ -254,10 +264,13 @@ export default function ReportPage() {
       if (!res.ok) throw new Error(typeof data.message === "string" ? data.message : "Could not open a fix pull request")
       toast.success(
         <span>
-          Draft PR opened: <a className="underline" href={data.url} target="_blank" rel="noreferrer">{data.repo}#{data.number}</a>
+          Draft PR opened:{" "}
+          <a className="underline" href={data.url} target="_blank" rel="noreferrer">
+            {data.repo}#{data.number}
+          </a>
           {data.files?.length ? ` (${data.files.join(", ")})` : ""}
         </span>,
-        { id: t, duration: 10000 }
+        { id: t, duration: 10000 },
       )
       load()
       setActivityKey((k) => k + 1)
@@ -314,15 +327,22 @@ export default function ReportPage() {
                 <span className="font-mono text-foreground-muted">{bugId(report.number)}</span>
                 <SeverityPill severity={report.severity} />
                 {report.aiStatus === "done" && (
-                  <span className="inline-flex items-center gap-1 text-primary"><Sparkles className="h-3.5 w-3.5" />AI write-up</span>
+                  <span className="inline-flex items-center gap-1 text-primary">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI write-up
+                  </span>
                 )}
                 {pending && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary" role="status">
-                    <Loader2 className="h-3 w-3 animate-spin" />AI is writing the report…
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    AI is writing the report…
                   </span>
                 )}
                 {(report.duplicateCount ?? 1) > 1 && (
-                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"><Layers className="h-3.5 w-3.5" />Seen {report.duplicateCount} times</span>
+                  <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                    <Layers className="h-3.5 w-3.5" />
+                    Seen {report.duplicateCount} times
+                  </span>
                 )}
               </div>
               <textarea
@@ -341,23 +361,29 @@ export default function ReportPage() {
                 aria-label="Bug title"
                 className="block w-full resize-none overflow-hidden rounded-md bg-transparent text-[22px] font-semibold leading-tight tracking-tight text-foreground outline-none hover:bg-background-secondary/60 focus:bg-background-secondary/60"
               />
-              {report.verifications?.[0] && (() => {
-                const v = report.verifications[0]
-                const ok = v.status === "passed"
-                return (
-                  <a
-                    href={v.runUrl || v.prUrl || "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={v.details || undefined}
-                    className={`mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[12px] ${ok ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
-                  >
-                    {ok ? "✓ Fix verified" : v.status === "failed" ? "✗ Still reproduces" : "⚠ Test could not run"}
-                    {v.prNumber ? <span className="text-foreground-muted">on PR #{v.prNumber}{v.repo ? ` · ${v.repo}` : ""}</span> : null}
-                    <span className="text-foreground-muted">· {new Date(v.createdAt).toLocaleDateString()}</span>
-                  </a>
-                )
-              })()}
+              {report.verifications?.[0] &&
+                (() => {
+                  const v = report.verifications[0]
+                  const ok = v.status === "passed"
+                  return (
+                    <a
+                      href={v.runUrl || v.prUrl || "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={v.details || undefined}
+                      className={`mt-2 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[12px] ${ok ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
+                    >
+                      {ok ? "✓ Fix verified" : v.status === "failed" ? "✗ Still reproduces" : "⚠ Test could not run"}
+                      {v.prNumber ? (
+                        <span className="text-foreground-muted">
+                          on PR #{v.prNumber}
+                          {v.repo ? ` · ${v.repo}` : ""}
+                        </span>
+                      ) : null}
+                      <span className="text-foreground-muted">· {new Date(v.createdAt).toLocaleDateString()}</span>
+                    </a>
+                  )
+                })()}
               {report.links && report.links.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {report.links.map((l) => {
@@ -395,14 +421,31 @@ export default function ReportPage() {
                 {(page?.url || report.url) && (
                   <>
                     <span>·</span>
-                    <a href={page?.url || report.url || undefined} target="_blank" rel="noreferrer" className="inline-flex max-w-[360px] items-center gap-1 truncate text-primary hover:underline">
+                    <a
+                      href={page?.url || report.url || undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex max-w-[360px] items-center gap-1 truncate text-primary hover:underline"
+                    >
                       <Globe className="h-3.5 w-3.5 shrink-0" />
                       {(page?.url || report.url || "").replace(/^https?:\/\//, "").replace(/\?.*$/, "")}
                     </a>
                   </>
                 )}
-                {page?.userAgent && <><span>·</span><span>{shortBrowser(page.userAgent)}</span></>}
-                {page?.viewport?.width ? <><span>·</span><span className="font-mono">{page.viewport.width}×{page.viewport.height}</span></> : null}
+                {page?.userAgent && (
+                  <>
+                    <span>·</span>
+                    <span>{shortBrowser(page.userAgent)}</span>
+                  </>
+                )}
+                {page?.viewport?.width ? (
+                  <>
+                    <span>·</span>
+                    <span className="font-mono">
+                      {page.viewport.width}×{page.viewport.height}
+                    </span>
+                  </>
+                ) : null}
               </div>
             </div>
 
@@ -421,7 +464,9 @@ export default function ReportPage() {
                     <GithubMark className="h-4 w-4" />
                     <span className="flex flex-col">
                       <span>Open a fix pull request</span>
-                      <span className="text-[11.5px] text-foreground-muted">{tools?.connected.github ? "AI writes a small fix as a draft PR" : "Connect GitHub in Integrations first"}</span>
+                      <span className="text-[11.5px] text-foreground-muted">
+                        {tools?.connected.github ? "AI writes a small fix as a draft PR" : "Connect GitHub in Integrations first"}
+                      </span>
                     </span>
                   </MenuItem>
                   <MenuItem onSelect={fixWithAi}>
@@ -435,40 +480,58 @@ export default function ReportPage() {
               </Menu>
               <Menu>
                 <MenuTrigger className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium outline-none hover:bg-background-tertiary">
-                  <Github className="h-4 w-4" />Create issue<ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
+                  <Github className="h-4 w-4" />
+                  Create issue
+                  <ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
                 </MenuTrigger>
                 <MenuContent align="end" className="w-64">
-                  {(["github", "linear", "jira"] as Provider[]).filter((p) => tools?.connected[p]).map((p) => {
-                    const cfg = (tools?.connected[p]?.config ?? {}) as Record<string, string>
-                    const target = p === "github" ? cfg.defaultRepo : p === "linear" ? ((cfg.teams as unknown as { id: string; key: string }[]) ?? []).find((t) => t.id === cfg.teamId)?.key : cfg.projectKey
-                    const Logo = p === "github" ? GithubMark : p === "linear" ? LinearMark : JiraMark
-                    return (
-                      <MenuItem
-                        key={p}
-                        disabled={!canEdit || creating !== null}
-                        onSelect={async () => {
-                          setCreating(p)
-                          const t = toast.loading(`Creating the ${p === "github" ? "GitHub" : p === "linear" ? "Linear" : "Jira"} issue…`)
-                          try {
-                            const link = await createExternalIssue(report.id, p)
-                            merge({ links: [...(report.links ?? []), link] })
-                            toast.success(<span>Created <a className="underline" href={link.url} target="_blank" rel="noreferrer">{link.key}</a></span>, { id: t })
-                          } catch (err) {
-                            toast.error(err instanceof Error ? err.message : "Could not create the issue", { id: t })
-                          } finally {
-                            setCreating(null)
-                          }
-                        }}
-                      >
-                        <Logo className="h-4 w-4" />
-                        {p === "github" ? "GitHub" : p === "linear" ? "Linear" : "Jira"}
-                        <MenuHint>{target ?? "choose default"}</MenuHint>
-                      </MenuItem>
-                    )
-                  })}
+                  {(["github", "linear", "jira"] as Provider[])
+                    .filter((p) => tools?.connected[p])
+                    .map((p) => {
+                      const cfg = (tools?.connected[p]?.config ?? {}) as Record<string, string>
+                      const target =
+                        p === "github"
+                          ? cfg.defaultRepo
+                          : p === "linear"
+                            ? ((cfg.teams as unknown as { id: string; key: string }[]) ?? []).find((t) => t.id === cfg.teamId)?.key
+                            : cfg.projectKey
+                      const Logo = p === "github" ? GithubMark : p === "linear" ? LinearMark : JiraMark
+                      return (
+                        <MenuItem
+                          key={p}
+                          disabled={!canEdit || creating !== null}
+                          onSelect={async () => {
+                            setCreating(p)
+                            const t = toast.loading(`Creating the ${p === "github" ? "GitHub" : p === "linear" ? "Linear" : "Jira"} issue…`)
+                            try {
+                              const link = await createExternalIssue(report.id, p)
+                              merge({ links: [...(report.links ?? []), link] })
+                              toast.success(
+                                <span>
+                                  Created{" "}
+                                  <a className="underline" href={link.url} target="_blank" rel="noreferrer">
+                                    {link.key}
+                                  </a>
+                                </span>,
+                                { id: t },
+                              )
+                            } catch (err) {
+                              toast.error(err instanceof Error ? err.message : "Could not create the issue", { id: t })
+                            } finally {
+                              setCreating(null)
+                            }
+                          }}
+                        >
+                          <Logo className="h-4 w-4" />
+                          {p === "github" ? "GitHub" : p === "linear" ? "Linear" : "Jira"}
+                          <MenuHint>{target ?? "choose default"}</MenuHint>
+                        </MenuItem>
+                      )
+                    })}
                   {!(["github", "linear", "jira"] as Provider[]).some((p) => tools?.connected[p]) && (
                     <MenuItem onSelect={() => (repo ? openGithub(repo) : setRepoDialog(true))}>
-                      <Github className="h-4 w-4" />Open a GitHub issue page<MenuHint>{repo ?? "choose repo"}</MenuHint>
+                      <Github className="h-4 w-4" />
+                      Open a GitHub issue page<MenuHint>{repo ?? "choose repo"}</MenuHint>
                     </MenuItem>
                   )}
                   <MenuSeparator />
@@ -477,28 +540,58 @@ export default function ReportPage() {
                   </MenuItem>
                 </MenuContent>
               </Menu>
-              {canEdit && <Tip label={report.shareToken ? "Copy the share link" : "Create a read-only link"}>
-                <button onClick={share} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium hover:bg-background-tertiary">
-                  <Link2 className="h-4 w-4" />Share
-                </button>
-              </Tip>}
+              {canEdit && (
+                <Tip label={report.shareToken ? "Copy the share link" : "Create a read-only link"}>
+                  <button
+                    onClick={share}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium hover:bg-background-tertiary"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Share
+                  </button>
+                </Tip>
+              )}
               <Menu>
-                <MenuTrigger className="grid h-8 w-8 place-items-center rounded-lg text-foreground-secondary outline-none hover:bg-background-tertiary" aria-label="More actions">
+                <MenuTrigger
+                  className="grid h-8 w-8 place-items-center rounded-lg text-foreground-secondary outline-none hover:bg-background-tertiary"
+                  aria-label="More actions"
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </MenuTrigger>
                 <MenuContent align="end">
-                  <MenuItem onSelect={() => copy(reportToMarkdown(report, window.location.origin), "Copied as Markdown")}><Copy className="h-4 w-4" />Copy as Markdown</MenuItem>
-                  <MenuItem disabled={pending || !canEdit} onSelect={generate}><Sparkles className="h-4 w-4" />{report.aiStatus === "done" ? "Write again with AI" : "Generate AI write-up"}</MenuItem>
-                  <MenuItem onSelect={async () => downloadText(`${bugId(report.number).toLowerCase()}.spec.ts`, await getReportText(report.id, "playwright"), "text/plain")}>
-                    <FlaskConical className="h-4 w-4" />Download regression test
+                  <MenuItem onSelect={() => copy(reportToMarkdown(report, window.location.origin), "Copied as Markdown")}>
+                    <Copy className="h-4 w-4" />
+                    Copy as Markdown
+                  </MenuItem>
+                  <MenuItem disabled={pending || !canEdit} onSelect={generate}>
+                    <Sparkles className="h-4 w-4" />
+                    {report.aiStatus === "done" ? "Write again with AI" : "Generate AI write-up"}
+                  </MenuItem>
+                  <MenuItem
+                    onSelect={async () =>
+                      downloadText(`${bugId(report.number).toLowerCase()}.spec.ts`, await getReportText(report.id, "playwright"), "text/plain")
+                    }
+                  >
+                    <FlaskConical className="h-4 w-4" />
+                    Download regression test
                   </MenuItem>
                   {report.shareToken && canEdit && (
-                    <MenuItem onSelect={async () => { await setReportShared(report.id, false); merge({ shareToken: null }); toast.success("Stopped sharing") }}>
-                      <Link2 className="h-4 w-4" />Stop sharing
+                    <MenuItem
+                      onSelect={async () => {
+                        await setReportShared(report.id, false)
+                        merge({ shareToken: null })
+                        toast.success("Stopped sharing")
+                      }}
+                    >
+                      <Link2 className="h-4 w-4" />
+                      Stop sharing
                     </MenuItem>
                   )}
                   <MenuSeparator />
-                  <MenuItem disabled={!canEdit} onSelect={() => setConfirmDelete(true)} className="text-red-400 data-[highlighted]:text-red-400"><Trash2 className="h-4 w-4" />Delete report</MenuItem>
+                  <MenuItem disabled={!canEdit} onSelect={() => setConfirmDelete(true)} className="text-red-400 data-[highlighted]:text-red-400">
+                    <Trash2 className="h-4 w-4" />
+                    Delete report
+                  </MenuItem>
                 </MenuContent>
               </Menu>
             </div>
@@ -514,11 +607,17 @@ export default function ReportPage() {
               </div>
             </div>
           ) : info.mediaPending ? (
-            <p className="mt-5 rounded-xl border border-border bg-background-secondary px-4 py-3 text-sm text-foreground-muted">The recording did not finish uploading. The steps and logs below are saved.</p>
+            <p className="mt-5 rounded-xl border border-border bg-background-secondary px-4 py-3 text-sm text-foreground-muted">
+              The recording did not finish uploading. The steps and logs below are saved.
+            </p>
           ) : info.recordingExpiredAt && !info.recordingUrl ? (
-            <p className="mt-5 rounded-xl border border-border bg-background-secondary px-4 py-3 text-sm text-foreground-muted">The video was removed after the plan&apos;s storage period. The steps, logs and screenshots are kept.</p>
+            <p className="mt-5 rounded-xl border border-border bg-background-secondary px-4 py-3 text-sm text-foreground-muted">
+              The video was removed after the plan&apos;s storage period. The steps, logs and screenshots are kept.
+            </p>
           ) : info.recordingUrl ? (
-            <div className="mt-5"><SyncedPlayer src={info.recordingUrl} /></div>
+            <div className="mt-5">
+              <SyncedPlayer src={info.recordingUrl} />
+            </div>
           ) : shots[0] ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={shots[shots.length - 1]} alt="Last screenshot" className="mt-5 w-full rounded-xl border border-border" />
@@ -527,11 +626,22 @@ export default function ReportPage() {
           <Tabs defaultValue="overview" className="mt-6">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="timeline">Timeline <Count>{events.length}</Count></TabsTrigger>
-              <TabsTrigger value="console">Console <Count tone={errorCount ? "red" : undefined}>{consoleEvents.length}</Count></TabsTrigger>
-              <TabsTrigger value="network">Network <Count tone={networkLogs.some((l) => l.level.toUpperCase() === "ERROR") ? "red" : undefined}>{networkLogs.length}</Count></TabsTrigger>
-              <TabsTrigger value="test"><FlaskConical className="h-3.5 w-3.5" />Regression test</TabsTrigger>
-              <TabsTrigger value="shots">Screenshots <Count>{shots.length}</Count></TabsTrigger>
+              <TabsTrigger value="timeline">
+                Timeline <Count>{events.length}</Count>
+              </TabsTrigger>
+              <TabsTrigger value="console">
+                Console <Count tone={errorCount ? "red" : undefined}>{consoleEvents.length}</Count>
+              </TabsTrigger>
+              <TabsTrigger value="network">
+                Network <Count tone={networkLogs.some((l) => l.level.toUpperCase() === "ERROR") ? "red" : undefined}>{networkLogs.length}</Count>
+              </TabsTrigger>
+              <TabsTrigger value="test">
+                <FlaskConical className="h-3.5 w-3.5" />
+                Regression test
+              </TabsTrigger>
+              <TabsTrigger value="shots">
+                Screenshots <Count>{shots.length}</Count>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-4 space-y-4 outline-none">
@@ -551,7 +661,9 @@ export default function ReportPage() {
                       ? report.browserInfo?.aiError || "The AI could not write this one yet."
                       : "Let the AI write the summary, steps, expected vs actual and the likely cause."}
                   </p>
-                  <Button size="sm" onClick={generate}>Generate AI write-up</Button>
+                  <Button size="sm" onClick={generate}>
+                    Generate AI write-up
+                  </Button>
                 </div>
               )}
 
@@ -562,7 +674,9 @@ export default function ReportPage() {
                     {report.aiStatus === "done" && <span className="text-xs font-normal text-primary">written by AI, edit freely</span>}
                   </h2>
                   {descDirty && (
-                    <Button size="sm" onClick={saveDescription}>Save</Button>
+                    <Button size="sm" onClick={saveDescription}>
+                      Save
+                    </Button>
                   )}
                 </div>
                 <div className="px-1 [&_.ProseMirror]:min-h-[64px]" onBlur={saveDescription}>
@@ -583,17 +697,30 @@ export default function ReportPage() {
                   <section className="rounded-xl border border-border p-4">
                     <h2 className="mb-2 text-sm font-semibold">Steps to reproduce</h2>
                     <ol className="list-decimal space-y-1.5 pl-5 text-[13.5px] text-foreground-secondary">
-                      {report.stepsToReproduce.map((s, i) => <li key={i}><InlineCode text={s.replace(/^Step \d+:\s*/i, "")} /></li>)}
+                      {report.stepsToReproduce.map((s, i) => (
+                        <li key={i}>
+                          <InlineCode text={s.replace(/^Step \d+:\s*/i, "")} />
+                        </li>
+                      ))}
                     </ol>
                   </section>
                 )}
                 {report.aiRootCause && (
                   <section className="rounded-xl border border-primary/25 bg-primary/5 p-4">
-                    <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary"><Sparkles className="h-4 w-4" />Likely cause</h2>
-                    <p className="text-[13.5px] text-foreground-secondary"><InlineCode text={report.aiRootCause} /></p>
+                    <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                      <Sparkles className="h-4 w-4" />
+                      Likely cause
+                    </h2>
+                    <p className="text-[13.5px] text-foreground-secondary">
+                      <InlineCode text={report.aiRootCause} />
+                    </p>
                     {report.aiSuggestions?.length > 0 && (
                       <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] text-foreground-secondary">
-                        {report.aiSuggestions.slice(0, 4).map((s, i) => <li key={i}><InlineCode text={s} /></li>)}
+                        {report.aiSuggestions.slice(0, 4).map((s, i) => (
+                          <li key={i}>
+                            <InlineCode text={s} />
+                          </li>
+                        ))}
                       </ul>
                     )}
                   </section>
@@ -601,20 +728,26 @@ export default function ReportPage() {
                 {report.expectedResult && (
                   <section className="rounded-xl border border-border p-4">
                     <h2 className="mb-2 text-sm font-semibold">Expected</h2>
-                    <p className="text-[13.5px] text-foreground-secondary"><InlineCode text={report.expectedResult} /></p>
+                    <p className="text-[13.5px] text-foreground-secondary">
+                      <InlineCode text={report.expectedResult} />
+                    </p>
                   </section>
                 )}
                 {report.actualResult && (
                   <section className="rounded-xl border border-border p-4">
                     <h2 className="mb-2 text-sm font-semibold">Actual</h2>
-                    <p className="text-[13.5px] text-foreground-secondary"><InlineCode text={report.actualResult} /></p>
+                    <p className="text-[13.5px] text-foreground-secondary">
+                      <InlineCode text={report.actualResult} />
+                    </p>
                   </section>
                 )}
               </div>
 
               {keyMoments.length > 0 && (
                 <section>
-                  <h2 className="mb-2 text-sm font-semibold">Key moments <span className="font-normal text-foreground-muted">· click to jump in the video</span></h2>
+                  <h2 className="mb-2 text-sm font-semibold">
+                    Key moments <span className="font-normal text-foreground-muted">· click to jump in the video</span>
+                  </h2>
                   <EventList events={keyMoments} />
                 </section>
               )}
@@ -651,10 +784,14 @@ export default function ReportPage() {
                         return (
                           <tr key={i} className="border-b border-border last:border-0">
                             <td className="px-3 py-2 font-mono">{String(d.method ?? "")}</td>
-                            <td className="truncate px-3 py-2 font-mono text-foreground-secondary" title={String(d.url ?? l.message)}>{String(d.url ?? l.message).replace(/^https?:\/\/[^/]+/, "")}</td>
+                            <td className="truncate px-3 py-2 font-mono text-foreground-secondary" title={String(d.url ?? l.message)}>
+                              {String(d.url ?? l.message).replace(/^https?:\/\/[^/]+/, "")}
+                            </td>
                             <td className={`px-3 py-2 font-mono ${bad ? "text-red-400" : "text-emerald-400"}`}>{String(d.status ?? (bad ? "failed" : ""))}</td>
                             <td className="px-3 py-2 font-mono text-foreground-muted">{typeof d.duration === "number" ? `${d.duration}ms` : ""}</td>
-                            <td className="truncate px-3 py-2 font-mono text-foreground-muted" title={String(d.responseBody ?? "")}>{String(d.responseBody ?? d.error ?? "")}</td>
+                            <td className="truncate px-3 py-2 font-mono text-foreground-muted" title={String(d.responseBody ?? "")}>
+                              {String(d.responseBody ?? d.error ?? "")}
+                            </td>
                           </tr>
                         )
                       })}
@@ -674,11 +811,16 @@ export default function ReportPage() {
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   {shots.map((url, i) => (
-                    <button key={url} onClick={() => setEditingShot({ url, index: i })} className="group relative overflow-hidden rounded-lg border border-border">
+                    <button
+                      key={url}
+                      onClick={() => setEditingShot({ url, index: i })}
+                      className="group relative overflow-hidden rounded-lg border border-border"
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={url} alt={`Screenshot ${i + 1}`} className="w-full" />
                       <span className="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-black/60 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-                        <ImageIcon className="h-3.5 w-3.5" />Annotate
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        Annotate
                       </span>
                     </button>
                   ))}
@@ -698,12 +840,16 @@ export default function ReportPage() {
           {report.duplicates && report.duplicates.length > 0 && (
             <section>
               <h2 className="mb-2 flex items-center gap-1.5 text-[11.5px] font-medium text-foreground-muted">
-                <Layers className="h-3.5 w-3.5 text-amber-400" />Seen {report.duplicates.length + 1} times
+                <Layers className="h-3.5 w-3.5 text-amber-400" />
+                Seen {report.duplicates.length + 1} times
               </h2>
               <ul className="space-y-1">
                 {report.duplicates.slice(0, 5).map((d) => (
                   <li key={d.id}>
-                    <a href={`/dashboard/reports/${d.id}`} className="flex justify-between gap-2 rounded-md px-1.5 py-1 text-[12.5px] text-foreground-secondary hover:bg-background-tertiary hover:text-foreground">
+                    <a
+                      href={`/dashboard/reports/${d.id}`}
+                      className="flex justify-between gap-2 rounded-md px-1.5 py-1 text-[12.5px] text-foreground-secondary hover:bg-background-tertiary hover:text-foreground"
+                    >
                       <span className="truncate">{d.title}</span>
                       <span className="shrink-0 text-foreground-muted">{timeAgo(d.createdAt)}</span>
                     </a>
@@ -717,11 +863,40 @@ export default function ReportPage() {
             <section>
               <h2 className="mb-2 text-[11.5px] font-medium text-foreground-muted">Environment</h2>
               <dl className="grid grid-cols-[84px_1fr] gap-y-1 px-1.5 text-[12.5px]">
-                {page.userAgent && <><dt className="text-foreground-muted">Browser</dt><dd className="text-foreground-secondary">{shortBrowser(page.userAgent)}</dd></>}
-                {page.viewport?.width ? <><dt className="text-foreground-muted">Viewport</dt><dd className="font-mono text-foreground-secondary">{page.viewport.width} × {page.viewport.height}</dd></> : null}
-                {page.screen && <><dt className="text-foreground-muted">Screen</dt><dd className="font-mono text-foreground-secondary">{page.screen.width} × {page.screen.height} @{page.screen.pixelRatio}x</dd></>}
-                {page.language && <><dt className="text-foreground-muted">Language</dt><dd className="text-foreground-secondary">{page.language}</dd></>}
-                {info.duration ? <><dt className="text-foreground-muted">Recording</dt><dd className="text-foreground-secondary">{info.duration}s</dd></> : null}
+                {page.userAgent && (
+                  <>
+                    <dt className="text-foreground-muted">Browser</dt>
+                    <dd className="text-foreground-secondary">{shortBrowser(page.userAgent)}</dd>
+                  </>
+                )}
+                {page.viewport?.width ? (
+                  <>
+                    <dt className="text-foreground-muted">Viewport</dt>
+                    <dd className="font-mono text-foreground-secondary">
+                      {page.viewport.width} × {page.viewport.height}
+                    </dd>
+                  </>
+                ) : null}
+                {page.screen && (
+                  <>
+                    <dt className="text-foreground-muted">Screen</dt>
+                    <dd className="font-mono text-foreground-secondary">
+                      {page.screen.width} × {page.screen.height} @{page.screen.pixelRatio}x
+                    </dd>
+                  </>
+                )}
+                {page.language && (
+                  <>
+                    <dt className="text-foreground-muted">Language</dt>
+                    <dd className="text-foreground-secondary">{page.language}</dd>
+                  </>
+                )}
+                {info.duration ? (
+                  <>
+                    <dt className="text-foreground-muted">Recording</dt>
+                    <dd className="text-foreground-secondary">{info.duration}s</dd>
+                  </>
+                ) : null}
               </dl>
             </section>
           )}
@@ -754,7 +929,9 @@ export default function ReportPage() {
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent title={`Delete ${bugId(report.number)}?`} description="The report, its video and screenshots are deleted for good.">
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
             <Button
               className="bg-red-500 hover:bg-red-600"
               onClick={async () => {
@@ -786,7 +963,9 @@ export default function ReportPage() {
             }}
           >
             <Input autoFocus value={repoInput} onChange={(e) => setRepoInput(e.target.value)} placeholder={repo ?? "owner/repo"} />
-            <Button type="submit" disabled={!repoInput.trim()}>Save and open</Button>
+            <Button type="submit" disabled={!repoInput.trim()}>
+              Save and open
+            </Button>
           </form>
         </DialogContent>
       </Dialog>

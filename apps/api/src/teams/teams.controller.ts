@@ -1,4 +1,17 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, GoneException, HttpCode, NotFoundException, Param, Patch, Post } from "@nestjs/common"
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  GoneException,
+  HttpCode,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+} from "@nestjs/common"
 import { assertCanAddMembers } from "../plans/plans"
 import { RateLimit } from "../ops/rate-limit"
 import { waitUntil } from "@vercel/functions"
@@ -29,7 +42,7 @@ const asRole = (r: unknown): Role | null => (ROLES.includes(r as Role) ? (r as R
 export class TeamsController {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mailer: Mailer
+    private readonly mailer: Mailer,
   ) {}
 
   // ---------- workspaces ----------
@@ -41,7 +54,13 @@ export class TeamsController {
     const owned = await this.prisma.membership.count({ where: { userId: auth.userId, role: "owner" } })
     if (owned >= 10) throw new BadRequestException("You can own up to 10 workspaces")
     const ws = await this.prisma.workspace.create({
-      data: { name, slug: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 24)}-${randomToken().slice(0, 6).toLowerCase()}` },
+      data: {
+        name,
+        slug: `${name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .slice(0, 24)}-${randomToken().slice(0, 6).toLowerCase()}`,
+      },
     })
     await this.prisma.membership.create({ data: { workspaceId: ws.id, userId: auth.userId, role: "owner" } })
     await this.prisma.user.update({ where: { id: auth.userId }, data: { workspaceId: ws.id } })
@@ -87,9 +106,10 @@ export class TeamsController {
       you: { id: auth.userId, role: auth.role },
       members: members.map((m) => ({ ...m.user, role: m.role, joinedAt: m.createdAt })),
       // Only admins see pending invites.
-      invites: ROLE_RANK[auth.role] >= ROLE_RANK.admin
-        ? invites.map((i) => ({ id: i.id, email: i.email, role: i.role, invitedBy: i.invitedBy.name, createdAt: i.createdAt, expiresAt: i.expiresAt }))
-        : [],
+      invites:
+        ROLE_RANK[auth.role] >= ROLE_RANK.admin
+          ? invites.map((i) => ({ id: i.id, email: i.email, role: i.role, invitedBy: i.invitedBy.name, createdAt: i.createdAt, expiresAt: i.expiresAt }))
+          : [],
     }
   }
 
@@ -158,7 +178,14 @@ export class TeamsController {
       await this.prisma.invite.deleteMany({ where: { workspaceId: auth.workspaceId, email, acceptedAt: null } })
       const token = randomToken()
       await this.prisma.invite.create({
-        data: { workspaceId: auth.workspaceId, email, role, tokenHash: sha256(token), invitedById: auth.userId, expiresAt: new Date(Date.now() + INVITE_TTL_MS) },
+        data: {
+          workspaceId: auth.workspaceId,
+          email,
+          role,
+          tokenHash: sha256(token),
+          invitedById: auth.userId,
+          expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+        },
       })
       const url = `${appUrl()}/invite/${token}`
       const mail = inviteEmail({ inviter: inviter.name, workspace: ws.name, role, url })

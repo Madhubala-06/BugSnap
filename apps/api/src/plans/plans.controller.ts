@@ -9,7 +9,7 @@ import { PLANS, usage } from "./plans"
 export class PlansController {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mailer: Mailer
+    private readonly mailer: Mailer,
   ) {}
 
   @Get("usage")
@@ -24,7 +24,12 @@ export class PlansController {
   async proInterest(@Auth() auth: AuthContext) {
     const ws = await this.prisma.workspace.update({ where: { id: auth.workspaceId }, data: { proInterestAt: new Date() }, select: { name: true } })
     for (const to of opsEmails()) {
-      await this.mailer.sendEmail(to, `Pro waitlist: ${ws.name}`, `${auth.email} wants BugSnap Pro for "${ws.name}".`, `<p><b>${auth.email}</b> wants BugSnap Pro for "${ws.name}".</p>`)
+      await this.mailer.sendEmail(
+        to,
+        `Pro waitlist: ${ws.name}`,
+        `${auth.email} wants BugSnap Pro for "${ws.name}".`,
+        `<p><b>${auth.email}</b> wants BugSnap Pro for "${ws.name}".</p>`,
+      )
     }
     return { ok: true }
   }

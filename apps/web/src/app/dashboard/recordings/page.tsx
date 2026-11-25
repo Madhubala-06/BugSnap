@@ -80,18 +80,12 @@ export default function RecordingsPage() {
         <div className="text-center py-12">
           <Video className="h-16 w-16 mx-auto text-foreground-muted mb-4" />
           <h3 className="text-lg font-medium text-foreground mb-2">No recordings yet</h3>
-          <p className="text-foreground-secondary">
-            Start recording bugs using the browser extension
-          </p>
+          <p className="text-foreground-secondary">Start recording bugs using the browser extension</p>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {recordings.map((recording) => (
-            <Card
-              key={recording.url}
-              className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setSelectedVideo(recording)}
-            >
+            <Card key={recording.url} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedVideo(recording)}>
               <div className="relative aspect-video bg-background-tertiary flex items-center justify-center overflow-hidden">
                 <video src={`${recording.url}#t=0.5`} preload="metadata" muted playsInline className="absolute inset-0 h-full w-full object-cover" />
                 <Video className="relative h-8 w-8 text-foreground/70 drop-shadow" />
@@ -103,9 +97,7 @@ export default function RecordingsPage() {
               </div>
               <CardContent className="p-4">
                 <div>
-                  <h3 className="font-medium mb-2 text-foreground truncate">
-                    {recording.reportTitle || recording.filename}
-                  </h3>
+                  <h3 className="font-medium mb-2 text-foreground truncate">{recording.reportTitle || recording.filename}</h3>
                   <div className="flex items-center gap-3 text-xs text-foreground-muted">
                     <span className="flex items-center gap-1">
                       <HardDrive className="h-3 w-3" />
@@ -125,36 +117,21 @@ export default function RecordingsPage() {
 
       {/* Video Modal */}
       {selectedVideo && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedVideo(null)}
-        >
-          <div
-            className="bg-background rounded-lg max-w-4xl w-full overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedVideo(null)}>
+          <div className="bg-background rounded-lg max-w-4xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-medium text-foreground truncate">
-                {selectedVideo.reportTitle || selectedVideo.filename}
-              </h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSelectedVideo(null)}
-              >
+              <h3 className="font-medium text-foreground truncate">{selectedVideo.reportTitle || selectedVideo.filename}</h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedVideo(null)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
             <div className="p-4">
-              <video
-                src={selectedVideo.url}
-                controls
-                autoPlay
-                className="w-full rounded-lg"
-              />
+              <video src={selectedVideo.url} controls autoPlay className="w-full rounded-lg" />
               <div className="mt-4 flex items-center gap-4 text-sm text-foreground-secondary">
                 {selectedVideo.reportId && (
-                  <a href={`/dashboard/reports/${selectedVideo.reportId}`} className="text-primary hover:underline">Open report</a>
+                  <a href={`/dashboard/reports/${selectedVideo.reportId}`} className="text-primary hover:underline">
+                    Open report
+                  </a>
                 )}
                 <span>{formatDate(selectedVideo.createdAt)}</span>
               </div>

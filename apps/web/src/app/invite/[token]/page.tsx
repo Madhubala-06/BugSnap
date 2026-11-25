@@ -17,8 +17,13 @@ export default function InvitePage() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    previewInvite(token).then(setInvite).catch((e) => setError(e instanceof Error ? e.message : "This invite is not valid"))
-    if (getToken()) getMe().then(setMe).catch(() => setMe(null))
+    previewInvite(token)
+      .then(setInvite)
+      .catch((e) => setError(e instanceof Error ? e.message : "This invite is not valid"))
+    if (getToken())
+      getMe()
+        .then(setMe)
+        .catch(() => setMe(null))
     else setMe(null)
   }, [token])
 
@@ -38,13 +43,17 @@ export default function InvitePage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Invite not available</h1>
             <p className="mt-2 text-sm text-foreground-secondary">{error}</p>
-            <Button className="mt-6" variant="outline" onClick={() => router.push("/dashboard")}>Go to BugSnap</Button>
+            <Button className="mt-6" variant="outline" onClick={() => router.push("/dashboard")}>
+              Go to BugSnap
+            </Button>
           </div>
         ) : !invite || me === undefined ? (
           <Loader2 className="h-6 w-6 animate-spin text-primary" aria-label="Loading" />
         ) : (
           <div>
-            <span className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><Users className="h-6 w-6" /></span>
+            <span className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Users className="h-6 w-6" />
+            </span>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Join {invite.workspace}</h1>
             <p className="mt-2 text-sm text-foreground-secondary">
               {invite.invitedBy} invited <b className="text-foreground">{invite.email}</b> to join as <b className="text-foreground">{invite.role}</b>.

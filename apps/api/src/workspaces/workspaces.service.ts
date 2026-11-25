@@ -48,12 +48,7 @@ export class WorkspacesService {
   }
 
   // Create workspace with initial user
-  async createWithUser(data: {
-    workspaceName: string
-    workspaceSlug: string
-    userName: string
-    userEmail: string
-  }) {
+  async createWithUser(data: { workspaceName: string; workspaceSlug: string; userName: string; userEmail: string }) {
     return this.prisma.workspace.create({
       data: {
         name: data.workspaceName,

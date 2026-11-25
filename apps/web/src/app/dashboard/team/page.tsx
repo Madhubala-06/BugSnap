@@ -84,7 +84,8 @@ function Team() {
         </div>
         {isAdmin && (
           <Button onClick={() => setInviteOpen(true)} className="gap-1.5">
-            <UserPlus className="h-4 w-4" />Invite people
+            <UserPlus className="h-4 w-4" />
+            Invite people
           </Button>
         )}
       </div>
@@ -94,7 +95,11 @@ function Team() {
           {members ? `${members.length} ${members.length === 1 ? "member" : "members"}` : "Members"}
         </div>
         {members === null ? (
-          <div className="space-y-px p-2">{[0, 1, 2].map((i) => <div key={i} className="h-12 animate-pulse rounded-md bg-background-secondary" />)}</div>
+          <div className="space-y-px p-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-12 animate-pulse rounded-md bg-background-secondary" />
+            ))}
+          </div>
         ) : (
           <ul>
             {members.map((m) => {
@@ -107,12 +112,15 @@ function Team() {
                     <p className="truncate text-sm font-medium">
                       {m.name} {self && <span className="font-normal text-foreground-muted">(you)</span>}
                     </p>
-                    <p className="truncate text-xs text-foreground-muted">{m.email} · joined {ago(m.joinedAt)}</p>
+                    <p className="truncate text-xs text-foreground-muted">
+                      {m.email} · joined {ago(m.joinedAt)}
+                    </p>
                   </div>
                   {canEdit ? (
                     <Menu>
                       <MenuTrigger className="inline-flex h-8 items-center gap-1 rounded-lg border border-border px-2.5 text-[13px] outline-none hover:bg-background-tertiary">
-                        {ROLE_INFO[m.role].label}<ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
+                        {ROLE_INFO[m.role].label}
+                        <ChevronDown className="h-3.5 w-3.5 text-foreground-muted" />
                       </MenuTrigger>
                       <MenuContent align="end" className="w-72">
                         {ROLES.filter((r) => r !== "owner" || me?.role === "owner").map((r) => (
@@ -130,7 +138,10 @@ function Team() {
                   )}
                   {(canEdit || self) && (
                     <Menu>
-                      <MenuTrigger className="grid h-8 w-8 place-items-center rounded-lg text-foreground-muted outline-none hover:bg-background-tertiary" aria-label={`More for ${m.name}`}>
+                      <MenuTrigger
+                        className="grid h-8 w-8 place-items-center rounded-lg text-foreground-muted outline-none hover:bg-background-tertiary"
+                        aria-label={`More for ${m.name}`}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
                       </MenuTrigger>
                       <MenuContent align="end">
@@ -159,7 +170,8 @@ function Team() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm">{i.email}</p>
                   <p className="text-xs text-foreground-muted">
-                    {ROLE_INFO[i.role].label} · invited by {i.invitedBy} {ago(i.createdAt)} · expires in {Math.max(1, Math.round((new Date(i.expiresAt).getTime() - Date.now()) / 86400000))} days
+                    {ROLE_INFO[i.role].label} · invited by {i.invitedBy} {ago(i.createdAt)} · expires in{" "}
+                    {Math.max(1, Math.round((new Date(i.expiresAt).getTime() - Date.now()) / 86400000))} days
                   </p>
                 </div>
                 <Button
@@ -254,7 +266,9 @@ function InviteDialog({ open, onOpenChange, onDone, canOwner }: { open: boolean;
               ))}
             </ul>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSent(null)}>Invite more</Button>
+              <Button variant="outline" onClick={() => setSent(null)}>
+                Invite more
+              </Button>
               <Button onClick={() => close(false)}>Done</Button>
             </div>
           </div>
@@ -311,8 +325,12 @@ function InviteDialog({ open, onOpenChange, onDone, canOwner }: { open: boolean;
               </Menu>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => close(false)}>Cancel</Button>
-              <Button type="submit" disabled={busy || !emails.trim()}>Send invites</Button>
+              <Button type="button" variant="outline" onClick={() => close(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={busy || !emails.trim()}>
+                Send invites
+              </Button>
             </div>
           </form>
         )}

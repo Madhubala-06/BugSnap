@@ -14,7 +14,10 @@ export function LoginShowcase() {
           maskImage: "radial-gradient(ellipse at 55% 45%, black 30%, transparent 75%)",
         }}
       />
-      <div aria-hidden className="pointer-events-none absolute left-1/2 top-[38%] h-[420px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#3b82f6]/[0.13] blur-[90px]" />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[38%] h-[420px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#3b82f6]/[0.13] blur-[90px]"
+      />
 
       <div className="relative mx-auto w-full max-w-[500px] px-10">
         <p className="mb-2 text-[13px] font-medium text-primary">One recording in, a ready-to-fix bug out</p>
@@ -29,7 +32,10 @@ export function LoginShowcase() {
           <div className="flex items-center gap-2 text-xs">
             <span className="font-mono text-foreground-muted">BUG-128</span>
             <span className="rounded-md bg-orange-500/15 px-1.5 py-0.5 text-[11px] font-medium text-orange-400">high</span>
-            <span className="ml-auto flex items-center gap-1 text-foreground-muted"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Open</span>
+            <span className="ml-auto flex items-center gap-1 text-foreground-muted">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Open
+            </span>
           </div>
           <p className="mt-2 text-[15px] font-semibold text-foreground">Pay button spins forever on checkout</p>
 
@@ -40,14 +46,18 @@ export function LoginShowcase() {
               <div className="absolute left-2 top-6 h-2 w-16 rounded bg-white/[0.05]" />
               <div className="absolute bottom-3 left-2 right-2 h-5 rounded bg-[#3b82f6]/70" />
               <span className="bs-click absolute bottom-[14px] left-[62px] h-4 w-4 rounded-full border-2 border-red-400" />
-              <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-black/60 px-1 py-0.5 font-mono text-[9px] text-white/80"><Play className="h-2.5 w-2.5" />0:14</span>
+              <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded bg-black/60 px-1 py-0.5 font-mono text-[9px] text-white/80">
+                <Play className="h-2.5 w-2.5" />
+                0:14
+              </span>
             </div>
             <div className="min-w-0 space-y-1.5 text-[12px]">
               <p className="bs-row flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-primary" style={{ animationDelay: ".2s" }}>
                 <Sparkles className="h-3 w-3" /> AI summary
               </p>
               <p className="bs-row leading-[1.45] text-foreground-secondary" style={{ animationDelay: ".45s" }}>
-                Clicking Pay sends <span className="font-mono text-[11px] text-foreground">POST /api/pay</span>, which fails with 500. The button never stops loading.
+                Clicking Pay sends <span className="font-mono text-[11px] text-foreground">POST /api/pay</span>, which fails with 500. The button never stops
+                loading.
               </p>
             </div>
           </div>
@@ -61,28 +71,46 @@ export function LoginShowcase() {
             ))}
           </ol>
 
-          <div className="bs-row mt-3 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-2.5 py-2 font-mono text-[11px] text-red-300" style={{ animationDelay: "1.3s" }}>
+          <div
+            className="bs-row mt-3 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-2.5 py-2 font-mono text-[11px] text-red-300"
+            style={{ animationDelay: "1.3s" }}
+          >
             <TriangleAlert className="mt-px h-3.5 w-3.5 flex-none" />
             <span className="truncate">TypeError: Cannot read properties of undefined (reading &apos;total&apos;)</span>
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="bs-chip inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] px-2 py-1 text-[11.5px] text-foreground-secondary" style={{ animationDelay: "1.6s" }}>
+            <span
+              className="bs-chip inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] px-2 py-1 text-[11.5px] text-foreground-secondary"
+              style={{ animationDelay: "1.6s" }}
+            >
               <Github className="h-3.5 w-3.5" /> acme/shop#142
             </span>
-            <span className="bs-chip inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] px-2 py-1 text-[11.5px] text-foreground-secondary" style={{ animationDelay: "1.75s" }}>
+            <span
+              className="bs-chip inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] px-2 py-1 text-[11.5px] text-foreground-secondary"
+              style={{ animationDelay: "1.75s" }}
+            >
               <FlaskConical className="h-3.5 w-3.5" /> Playwright test ready
             </span>
-            <span className="bs-chip inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[11.5px] text-primary" style={{ animationDelay: "1.9s" }}>
+            <span
+              className="bs-chip inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[11.5px] text-primary"
+              style={{ animationDelay: "1.9s" }}
+            >
               <Bot className="h-3.5 w-3.5" /> Fix with AI
             </span>
           </div>
         </div>
 
         <ul className="mt-8 grid grid-cols-3 gap-4 text-[12.5px] leading-5 text-foreground-muted">
-          <li><span className="block font-medium text-foreground">Records it all</span>Screen, clicks, console and network</li>
-          <li><span className="block font-medium text-foreground">Writes the report</span>Steps, expected vs actual, likely cause</li>
-          <li><span className="block font-medium text-foreground">Sends it on</span>GitHub, Linear, Jira or Slack</li>
+          <li>
+            <span className="block font-medium text-foreground">Records it all</span>Screen, clicks, console and network
+          </li>
+          <li>
+            <span className="block font-medium text-foreground">Writes the report</span>Steps, expected vs actual, likely cause
+          </li>
+          <li>
+            <span className="block font-medium text-foreground">Sends it on</span>GitHub, Linear, Jira or Slack
+          </li>
         </ul>
       </div>
 

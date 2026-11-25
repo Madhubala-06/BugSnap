@@ -24,7 +24,7 @@ export class AiFixService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ai: AIService,
-    private readonly integrations: IntegrationsService
+    private readonly integrations: IntegrationsService,
   ) {}
 
   async openFixPr(workspaceId: string, userId: string, reportId: string, repoArg?: string) {
@@ -38,13 +38,19 @@ export class AiFixService {
 
     const perms = await GH.installationPermissions(installationId)
     if (perms.contents !== "write" || perms.pull_requests !== "write") {
-      throw new ConflictException("BugSnap's GitHub app needs permission to open pull requests. Accept the new permissions on GitHub (Settings > Applications > BugSnap Bug Reports), then try again.")
+      throw new ConflictException(
+        "BugSnap's GitHub app needs permission to open pull requests. Accept the new permissions on GitHub (Settings > Applications > BugSnap Bug Reports), then try again.",
+      )
     }
 
     const { defaultBranch } = await GH.repoInfo(installationId, repo)
     const { headSha, files } = await GH.listFiles(installationId, repo, defaultBranch)
     const info = (report.browserInfo ?? {}) as { logs?: { message?: string; data?: Record<string, unknown> }[]; page?: { url?: string } }
-    const texts = [report.url ?? "", info.page?.url ?? "", ...(info.logs ?? []).flatMap((l) => [l.message ?? "", String(l.data?.stack ?? ""), String(l.data?.url ?? "")])]
+    const texts = [
+      report.url ?? "",
+      info.page?.url ?? "",
+      ...(info.logs ?? []).flatMap((l) => [l.message ?? "", String(l.data?.stack ?? ""), String(l.data?.url ?? "")]),
+    ]
     const chosen = pickFiles(files, bugHints(texts))
     if (!chosen.length) throw new BadRequestException(`Could not find source files in ${repo} to look at`)
     const contents: Record<string, string> = {}
@@ -55,7 +61,12 @@ export class AiFixService {
       shas[f.path] = r.sha
     }
 
-    const prompt = [toFixPrompt(report, appUrl()), "", "## Files from the repository", ...Object.entries(contents).map(([p, t]) => `### ${p}\n\`\`\`\n${t}\n\`\`\``)].join("\n")
+    const prompt = [
+      toFixPrompt(report, appUrl()),
+      "",
+      "## Files from the repository",
+      ...Object.entries(contents).map(([p, t]) => `### ${p}\n\`\`\`\n${t}\n\`\`\``),
+    ].join("\n")
     let answer: FixAnswer | null = null
     let applied: ReturnType<typeof applyEdits> | null = null
     let feedback = ""
@@ -68,7 +79,8 @@ export class AiFixService {
       if (applied.ok) break
       feedback = `\n\n## Your previous answer could not be applied\n${applied.error}. Copy "find" text exactly from the files above.`
     }
-    if (!answer || !applied?.ok) throw new ConflictException(`The AI's change did not apply cleanly${applied && !applied.ok ? `: ${applied.error}` : ""}. Try again or fix it by hand.`)
+    if (!answer || !applied?.ok)
+      throw new ConflictException(`The AI's change did not apply cleanly${applied && !applied.ok ? `: ${applied.error}` : ""}. Try again or fix it by hand.`)
 
     const branch = `bugsnap/fix-bug-${report.number ?? "x"}-${crypto.randomBytes(2).toString("hex")}`
     await GH.createBranch(installationId, repo, branch, headSha)
@@ -82,7 +94,9 @@ export class AiFixService {
       `**Root cause:** ${answer.rootCause ?? "see the bug report"}`,
       `**AI confidence:** ${answer.confidence ?? "unknown"}`,
       "",
-      `Files: ${Object.keys(applied.changed).map((p) => `\`${p}\``).join(", ")}`,
+      `Files: ${Object.keys(applied.changed)
+        .map((p) => `\`${p}\``)
+        .join(", ")}`,
       "",
       `[BUG-${report.number} in BugSnap](${appUrl()}/dashboard/reports/${report.id}): video, steps, console and network.`,
       "",

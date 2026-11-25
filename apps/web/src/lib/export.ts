@@ -1,12 +1,18 @@
 import type { BugReport, SessionLog } from "./api"
 
-const strip = (html?: string | null) => (html ?? "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim()
+const strip = (html?: string | null) =>
+  (html ?? "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim()
 
 /** A report as Markdown, ready to paste into GitHub, Jira, Linear or Slack. */
 export function reportToMarkdown(report: BugReport, appUrl?: string): string {
   const info = report.browserInfo ?? {}
   const page = info.page
-  const logs: SessionLog[] = report.session?.logs?.length ? report.session.logs : info.logs ?? []
+  const logs: SessionLog[] = report.session?.logs?.length ? report.session.logs : (info.logs ?? [])
   const errors = logs.filter((l) => l.level.toUpperCase() === "ERROR").slice(0, 10)
   const lines: string[] = [`## ${report.title}`, ""]
   lines.push(`**Severity:** ${report.severity.toLowerCase()} · **Status:** ${report.status.replace("_", " ").toLowerCase()}`)

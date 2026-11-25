@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+.next
+.next-*
+.plasmo
+.turbo
+.vercel
+pnpm-lock.yaml
+apps/python-api
+apps/api/prisma/migrations
+apps/api/assets/widget.js
+*.md

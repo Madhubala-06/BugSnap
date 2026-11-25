@@ -14,7 +14,19 @@ import { useCrumbs, useWorkspace } from "@/components/shell/workspace-data"
 import { bulkUpdate, getBugReports, type BugReport, type ReportStatus, type Severity } from "@/lib/api"
 import { reportsToCsv, downloadText } from "@/lib/export"
 import { Menu, MenuCheckItem, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/kit/menu"
-import { Avatar, bugId, notifyReportsChanged, PRIORITY_LABEL, PRIORITY_ORDER, PriorityIcon, SeverityPill, STATUS_LABEL, STATUS_ORDER, StatusIcon, timeAgo } from "@/components/kit/bits"
+import {
+  Avatar,
+  bugId,
+  notifyReportsChanged,
+  PRIORITY_LABEL,
+  PRIORITY_ORDER,
+  PriorityIcon,
+  SeverityPill,
+  STATUS_LABEL,
+  STATUS_ORDER,
+  StatusIcon,
+  timeAgo,
+} from "@/components/kit/bits"
 import { Tip } from "@/components/kit/tooltip"
 
 const OPEN: ReportStatus[] = ["OPEN", "IN_PROGRESS", "FIX_READY"]
@@ -47,7 +59,9 @@ function Box({ checked, onChange, label }: { checked: boolean | "indeterminate";
       aria-label={label}
       className="grid h-[15px] w-[15px] place-items-center rounded-[4px] border border-border-hover bg-background-secondary data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary"
     >
-      <Checkbox.Indicator>{checked === "indeterminate" ? <Minus className="h-3 w-3 text-white" /> : <Check className="h-3 w-3 text-white" />}</Checkbox.Indicator>
+      <Checkbox.Indicator>
+        {checked === "indeterminate" ? <Minus className="h-3 w-3 text-white" /> : <Check className="h-3 w-3 text-white" />}
+      </Checkbox.Indicator>
     </Checkbox.Root>
   )
 }
@@ -57,7 +71,9 @@ function FilterChip({ active, children }: { active: boolean; children: React.Rea
     <span
       className={cn(
         "inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-[12.5px]",
-        active ? "border-primary/40 bg-primary/10 text-primary" : "border-dashed border-border-hover text-foreground-secondary hover:border-solid hover:text-foreground"
+        active
+          ? "border-primary/40 bg-primary/10 text-primary"
+          : "border-dashed border-border-hover text-foreground-secondary hover:border-solid hover:text-foreground",
       )}
     >
       {children}
@@ -128,7 +144,7 @@ function ReportsTable() {
       (!sev.length || sev.includes(r.severity)) &&
       (!assignee.length || assignee.includes(r.assignee?.id ?? "none")) &&
       (!label.length || label.some((l) => r.labels?.includes(l))) &&
-      (!q || `${bugId(r.number)} ${r.title} ${r.url ?? ""} ${(r.labels ?? []).join(" ")}`.toLowerCase().includes(q))
+      (!q || `${bugId(r.number)} ${r.title} ${r.url ?? ""} ${(r.labels ?? []).join(" ")}`.toLowerCase().includes(q)),
   )
   const filtering = Boolean(q || sev.length || assignee.length || label.length)
 
@@ -167,10 +183,18 @@ function ReportsTable() {
         <div className="ml-auto flex gap-2">
           {project && canEdit && (
             <>
-              <button onClick={() => setSettings("widget")} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium hover:bg-background-tertiary">
-                <MessageSquareWarning className="h-4 w-4" />Website widget{project.widgetEnabled && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+              <button
+                onClick={() => setSettings("widget")}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[13px] font-medium hover:bg-background-tertiary"
+              >
+                <MessageSquareWarning className="h-4 w-4" />
+                Website widget{project.widgetEnabled && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
               </button>
-              <button onClick={() => setSettings("general")} className="grid h-8 w-8 place-items-center rounded-lg border border-border hover:bg-background-tertiary" aria-label="Project settings">
+              <button
+                onClick={() => setSettings("general")}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-border hover:bg-background-tertiary"
+                aria-label="Project settings"
+              >
                 <Settings2 className="h-4 w-4" />
               </button>
             </>
@@ -196,7 +220,7 @@ function ReportsTable() {
               onClick={() => setTab(t.id)}
               className={cn(
                 "-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-2 text-[13.5px]",
-                activeTab.id === t.id ? "border-primary text-foreground" : "border-transparent text-foreground-muted hover:text-foreground-secondary"
+                activeTab.id === t.id ? "border-primary text-foreground" : "border-transparent text-foreground-muted hover:text-foreground-secondary",
               )}
             >
               {t.label}
@@ -217,12 +241,26 @@ function ReportsTable() {
         <Menu>
           <MenuTrigger className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <FilterChip active={sev.length > 0}>
-              {sev.length ? <>Severity: {sev.map((s) => s.toLowerCase()).join(", ")}</> : <><Plus className="h-3.5 w-3.5" />Severity</>}
+              {sev.length ? (
+                <>Severity: {sev.map((s) => s.toLowerCase()).join(", ")}</>
+              ) : (
+                <>
+                  <Plus className="h-3.5 w-3.5" />
+                  Severity
+                </>
+              )}
             </FilterChip>
           </MenuTrigger>
           <MenuContent>
             {SEVERITIES.map((s) => (
-              <MenuCheckItem key={s} checked={sev.includes(s)} onSelect={(e) => { e.preventDefault(); setSev((v) => toggleIn(v, s)) }}>
+              <MenuCheckItem
+                key={s}
+                checked={sev.includes(s)}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setSev((v) => toggleIn(v, s))
+                }}
+              >
                 <SeverityPill severity={s} />
               </MenuCheckItem>
             ))}
@@ -231,15 +269,35 @@ function ReportsTable() {
         <Menu>
           <MenuTrigger className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <FilterChip active={assignee.length > 0}>
-              {assignee.length ? <>Assignee: {assignee.length}</> : <><Plus className="h-3.5 w-3.5" />Assignee</>}
+              {assignee.length ? (
+                <>Assignee: {assignee.length}</>
+              ) : (
+                <>
+                  <Plus className="h-3.5 w-3.5" />
+                  Assignee
+                </>
+              )}
             </FilterChip>
           </MenuTrigger>
           <MenuContent>
-            <MenuCheckItem checked={assignee.includes("none")} onSelect={(e) => { e.preventDefault(); setAssignee((v) => toggleIn(v, "none")) }}>
+            <MenuCheckItem
+              checked={assignee.includes("none")}
+              onSelect={(e) => {
+                e.preventDefault()
+                setAssignee((v) => toggleIn(v, "none"))
+              }}
+            >
               <User className="h-4 w-4" /> Unassigned
             </MenuCheckItem>
             {members.map((m) => (
-              <MenuCheckItem key={m.id} checked={assignee.includes(m.id)} onSelect={(e) => { e.preventDefault(); setAssignee((v) => toggleIn(v, m.id)) }}>
+              <MenuCheckItem
+                key={m.id}
+                checked={assignee.includes(m.id)}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setAssignee((v) => toggleIn(v, m.id))
+                }}
+              >
                 <Avatar name={m.name} email={m.email} size={18} /> {m.name}
               </MenuCheckItem>
             ))}
@@ -249,12 +307,26 @@ function ReportsTable() {
           <Menu>
             <MenuTrigger className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <FilterChip active={label.length > 0}>
-                {label.length ? <>Label: {label.join(", ")}</> : <><Plus className="h-3.5 w-3.5" />Label</>}
+                {label.length ? (
+                  <>Label: {label.join(", ")}</>
+                ) : (
+                  <>
+                    <Plus className="h-3.5 w-3.5" />
+                    Label
+                  </>
+                )}
               </FilterChip>
             </MenuTrigger>
             <MenuContent>
               {allLabels.map((l) => (
-                <MenuCheckItem key={l} checked={label.includes(l)} onSelect={(e) => { e.preventDefault(); setLabel((v) => toggleIn(v, l)) }}>
+                <MenuCheckItem
+                  key={l}
+                  checked={label.includes(l)}
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    setLabel((v) => toggleIn(v, l))
+                  }}
+                >
                   <Tag className="h-3.5 w-3.5" /> {l}
                 </MenuCheckItem>
               ))}
@@ -262,14 +334,26 @@ function ReportsTable() {
           </Menu>
         )}
         {filtering && (
-          <button onClick={() => { setSearch(""); setSev([]); setAssignee([]); setLabel([]) }} className="ml-1 inline-flex items-center gap-1 text-[12.5px] text-foreground-muted hover:text-foreground">
+          <button
+            onClick={() => {
+              setSearch("")
+              setSev([])
+              setAssignee([])
+              setLabel([])
+            }}
+            className="ml-1 inline-flex items-center gap-1 text-[12.5px] text-foreground-muted hover:text-foreground"
+          >
             <X className="h-3.5 w-3.5" /> Clear
           </button>
         )}
         <span className="ml-auto text-xs text-foreground-muted">Newest first</span>
       </div>
 
-      {error && <p role="alert" className="px-6 pb-3 text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="px-6 pb-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
 
       {reports === null ? (
         <div className="space-y-1 px-6" aria-busy="true" aria-label="Loading reports">
@@ -292,7 +376,10 @@ function ReportsTable() {
               <p className="font-medium text-foreground">No bugs here yet</p>
               <p className="mt-1 text-sm text-foreground-secondary">
                 Record one with the Chrome extension, or{" "}
-                <Link href="/r/demo" target="_blank" className="text-primary hover:underline">see an example report</Link>.
+                <Link href="/r/demo" target="_blank" className="text-primary hover:underline">
+                  see an example report
+                </Link>
+                .
               </p>
             </>
           )}
@@ -301,7 +388,9 @@ function ReportsTable() {
         <table className="w-full table-fixed border-collapse text-[13.5px]">
           <thead>
             <tr className="border-b border-border text-left text-xs text-foreground-muted">
-              <th className="w-12 py-2 pl-6 font-normal">{canEdit && <Box checked={allChecked} label="Select all" onChange={(on) => setSelected(on ? new Set(rows.map((r) => r.id)) : new Set())} />}</th>
+              <th className="w-12 py-2 pl-6 font-normal">
+                {canEdit && <Box checked={allChecked} label="Select all" onChange={(on) => setSelected(on ? new Set(rows.map((r) => r.id)) : new Set())} />}
+              </th>
               <th className="w-20 py-2 font-normal">ID</th>
               <th className="py-2 font-normal">Bug</th>
               <th className="w-24 py-2 font-normal">Severity</th>
@@ -334,7 +423,9 @@ function ReportsTable() {
                         </Tip>
                       )}
                       {(r.labels ?? []).slice(0, 2).map((l) => (
-                        <span key={l} className="shrink-0 rounded border border-border px-1.5 text-[11px] text-foreground-secondary">{l}</span>
+                        <span key={l} className="shrink-0 rounded border border-border px-1.5 text-[11px] text-foreground-secondary">
+                          {l}
+                        </span>
                       ))}
                     </div>
                     <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-xs text-foreground-muted">
@@ -343,17 +434,29 @@ function ReportsTable() {
                         <span className="shrink-0 rounded bg-sky-500/10 px-1 font-sans text-[10.5px] text-sky-600 dark:text-sky-400">website</span>
                       )}
                       <span className="truncate">{page || "no page"}</span>
-                      {errors > 0 && <span className="shrink-0 text-destructive/80">· {errors} error{errors > 1 ? "s" : ""}</span>}
+                      {errors > 0 && (
+                        <span className="shrink-0 text-destructive/80">
+                          · {errors} error{errors > 1 ? "s" : ""}
+                        </span>
+                      )}
                     </div>
                   </td>
-                  <td className="py-2.5"><SeverityPill severity={r.severity} /></td>
                   <td className="py-2.5">
-                    <span className="inline-flex items-center gap-1.5 text-foreground-secondary"><StatusIcon status={r.status} />{STATUS_LABEL[r.status]}</span>
+                    <SeverityPill severity={r.severity} />
+                  </td>
+                  <td className="py-2.5">
+                    <span className="inline-flex items-center gap-1.5 text-foreground-secondary">
+                      <StatusIcon status={r.status} />
+                      {STATUS_LABEL[r.status]}
+                    </span>
                   </td>
                   <td className="py-2.5">
                     {(r.duplicateCount ?? 1) > 1 ? (
                       <Tip label="Same error on the same page">
-                        <span className="inline-flex items-center gap-1 font-mono text-xs text-amber-600 dark:text-amber-400"><Layers className="h-3 w-3" />{r.duplicateCount}</span>
+                        <span className="inline-flex items-center gap-1 font-mono text-xs text-amber-600 dark:text-amber-400">
+                          <Layers className="h-3 w-3" />
+                          {r.duplicateCount}
+                        </span>
                       </Tip>
                     ) : (
                       <span className="text-foreground-muted">·</span>
@@ -385,35 +488,51 @@ function ReportsTable() {
       <div
         className={cn(
           "fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border border-border bg-card py-1.5 pl-4 pr-1.5 shadow-[0_16px_48px_-12px_rgba(0,0,0,.6)] transition-all",
-          selected.size ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
+          selected.size ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
         )}
         aria-hidden={!selected.size}
       >
         <span className="mr-2 text-sm font-medium">{selected.size} selected</span>
         <Menu>
-          <MenuTrigger className={bulkBtn}><User className="h-4 w-4" />Assign</MenuTrigger>
+          <MenuTrigger className={bulkBtn}>
+            <User className="h-4 w-4" />
+            Assign
+          </MenuTrigger>
           <MenuContent side="top">
             <MenuItem onSelect={() => applyBulk({ assigneeId: null }, "Unassigned")}>No one</MenuItem>
             {members.map((m) => (
               <MenuItem key={m.id} onSelect={() => applyBulk({ assigneeId: m.id }, `Assigned to ${m.name}`)}>
-                <Avatar name={m.name} email={m.email} size={18} />{m.name}
+                <Avatar name={m.name} email={m.email} size={18} />
+                {m.name}
               </MenuItem>
             ))}
           </MenuContent>
         </Menu>
         <Menu>
-          <MenuTrigger className={bulkBtn}><StatusIcon status="IN_PROGRESS" />Status</MenuTrigger>
+          <MenuTrigger className={bulkBtn}>
+            <StatusIcon status="IN_PROGRESS" />
+            Status
+          </MenuTrigger>
           <MenuContent side="top">
             {STATUS_ORDER.map((s) => (
-              <MenuItem key={s} onSelect={() => applyBulk({ status: s }, `Moved to ${STATUS_LABEL[s]}`)}><StatusIcon status={s} />{STATUS_LABEL[s]}</MenuItem>
+              <MenuItem key={s} onSelect={() => applyBulk({ status: s }, `Moved to ${STATUS_LABEL[s]}`)}>
+                <StatusIcon status={s} />
+                {STATUS_LABEL[s]}
+              </MenuItem>
             ))}
           </MenuContent>
         </Menu>
         <Menu>
-          <MenuTrigger className={bulkBtn}><PriorityIcon priority="high" />Priority</MenuTrigger>
+          <MenuTrigger className={bulkBtn}>
+            <PriorityIcon priority="high" />
+            Priority
+          </MenuTrigger>
           <MenuContent side="top">
             {PRIORITY_ORDER.map((p) => (
-              <MenuItem key={p} onSelect={() => applyBulk({ priority: p }, `Priority set to ${PRIORITY_LABEL[p]}`)}><PriorityIcon priority={p} />{PRIORITY_LABEL[p]}</MenuItem>
+              <MenuItem key={p} onSelect={() => applyBulk({ priority: p }, `Priority set to ${PRIORITY_LABEL[p]}`)}>
+                <PriorityIcon priority={p} />
+                {PRIORITY_LABEL[p]}
+              </MenuItem>
             ))}
           </MenuContent>
         </Menu>
@@ -424,7 +543,8 @@ function ReportsTable() {
               <MenuLabel>Move to project</MenuLabel>
               {projects.map((p) => (
                 <MenuItem key={p.id} onSelect={() => applyBulk({ projectId: p.id }, `Moved to ${p.name}`)}>
-                  <span className="h-2 w-2 rounded-[2px]" style={{ background: p.color }} />{p.name}
+                  <span className="h-2 w-2 rounded-[2px]" style={{ background: p.color }} />
+                  {p.name}
                 </MenuItem>
               ))}
               <MenuSeparator />
@@ -432,7 +552,11 @@ function ReportsTable() {
             </MenuContent>
           </Menu>
         )}
-        <button onClick={() => setSelected(new Set())} className="ml-1 rounded-lg p-2 text-foreground-muted hover:bg-background-tertiary hover:text-foreground" aria-label="Clear selection">
+        <button
+          onClick={() => setSelected(new Set())}
+          className="ml-1 rounded-lg p-2 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+          aria-label="Clear selection"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>

@@ -11,8 +11,12 @@ export function LegalPage({ title, updated, children }: { title: string; updated
             <span className="font-semibold text-foreground">BugSnap</span>
           </Link>
           <nav className="flex gap-4 text-sm text-foreground-secondary">
-            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link href="/terms" className="hover:text-foreground">Terms</Link>
+            <Link href="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
           </nav>
         </div>
       </header>

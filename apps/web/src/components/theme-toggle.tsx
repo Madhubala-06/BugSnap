@@ -15,13 +15,7 @@ export function ThemeToggle() {
 
   return (
     <Button variant="ghost" size="icon" onClick={cycleTheme} title={`Theme: ${theme}`}>
-      {theme === "system" ? (
-        <Monitor className="h-5 w-5" />
-      ) : resolvedTheme === "dark" ? (
-        <Moon className="h-5 w-5" />
-      ) : (
-        <Sun className="h-5 w-5" />
-      )}
+      {theme === "system" ? <Monitor className="h-5 w-5" /> : resolvedTheme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
     </Button>
   )
 }
