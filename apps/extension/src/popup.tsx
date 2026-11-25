@@ -115,6 +115,22 @@ function SignedIn({ auth, onSignOut }: { auth: StoredAuth; onSignOut: () => void
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(Date.now())
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [replay, setReplay] = useState<{ enabled: boolean; events: number; errors: number } | null>(null)
+
+  useEffect(() => {
+    if (!tab?.id) return
+    chrome.runtime.sendMessage({ type: "GET_REPLAY", tabId: tab.id }).then((r) => r?.ok && setReplay(r)).catch(() => undefined)
+  }, [tab?.id])
+
+  const toggleReplay = async () => {
+    const enabled = !replay?.enabled
+    await chrome.storage.local.set({ instantReplay: enabled })
+    setReplay((r) => ({ events: r?.events ?? 0, errors: r?.errors ?? 0, enabled }))
+  }
+  const saveReplay = async () => {
+    const r = await send("SAVE_REPLAY", { tabId: tab?.id })
+    if (r?.ok) window.close()
+  }
 
   useEffect(() => {
     chrome.runtime.sendMessage({ type: "GET_STATUS" }).then((r) => {
@@ -267,6 +283,41 @@ function SignedIn({ auth, onSignOut }: { auth: StoredAuth; onSignOut: () => void
               {busy ? "Opening…" : "Start recording"}
             </button>
             <p className="mt-2.5 text-center text-[11.5px] leading-4 text-[#5c5c64]">Records this tab, clicks, console and network. Passwords and keys are hidden. Shortcut: Alt+Shift+R</p>
+
+            {!restricted && replay && (
+              <div className="mt-3 rounded-xl border border-[#232327] bg-[#16161a] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-medium text-white">Instant replay</p>
+                    <p className="text-[11.5px] leading-4 text-[#8b8b93]">
+                      {replay.enabled
+                        ? replay.events
+                          ? `Last 2 min: ${replay.events} event${replay.events === 1 ? "" : "s"}${replay.errors ? `, ${replay.errors} error${replay.errors === 1 ? "" : "s"}` : ""}`
+                          : "On. Keeping the last 2 minutes of this tab."
+                        : "Keep the last 2 minutes, so you can save a bug you didn't record."}
+                    </p>
+                  </div>
+                  <button
+                    role="switch"
+                    aria-checked={replay.enabled}
+                    aria-label="Instant replay"
+                    onClick={toggleReplay}
+                    className={`relative h-5 w-9 flex-none rounded-full transition ${replay.enabled ? "bg-[#3b82f6]" : "bg-[#2a2a2f]"}`}
+                  >
+                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${replay.enabled ? "left-[18px]" : "left-0.5"}`} />
+                  </button>
+                </div>
+                {replay.enabled && (
+                  <button
+                    onClick={saveReplay}
+                    disabled={busy || !replay.events}
+                    className="mt-2.5 w-full rounded-lg border border-[#3b82f6]/40 bg-[#3b82f6]/10 py-2 text-[13px] font-medium text-[#93c5fd] hover:bg-[#3b82f6]/20 disabled:opacity-50"
+                  >
+                    Save last 2 minutes <span className="font-normal text-[#5c84c4]">· Alt+Shift+S</span>
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

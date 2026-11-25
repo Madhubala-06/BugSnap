@@ -49,6 +49,12 @@
           "default": "Alt+Shift+P"
         },
         "description": "Pause or resume the recording"
+      },
+      "save-replay": {
+        "suggested_key": {
+          "default": "Alt+Shift+S"
+        },
+        "description": "Save the last 2 minutes as a bug report (instant replay)"
       }
     }
   },

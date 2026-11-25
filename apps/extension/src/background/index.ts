@@ -1,6 +1,7 @@
 import type { RecordingSession, RecordingState, SessionLog, MessageType, PageInfo } from "../lib/types"
 import { DEFAULT_API_URL, DEFAULT_APP_URL, getState, setState, setSession } from "../lib/storage"
 import { apiFetch, getAuth, setAuth, signOut } from "../lib/auth"
+import { uploadFile } from "../lib/upload"
 
 const MAX_LOGS = 1000
 
@@ -47,6 +48,14 @@ async function handleMessage(message: MessageType, sender: chrome.runtime.Messag
       return finish()
     case "DISCARD_RECORDING":
       return discard()
+    case "REPLAY_LOG":
+      return replayLog(message.log, sender)
+    case "REPLAY_PAGE":
+      return replayPage(message.info, sender)
+    case "GET_REPLAY":
+      return replayStatus(message.tabId)
+    case "SAVE_REPLAY":
+      return saveReplay(message.tabId)
     case "OFFSCREEN_EVENT":
       return onOffscreenEvent(message.event, message.error)
     case "OPEN_SIGN_IN":
@@ -424,6 +433,154 @@ ready.then(async () => {
     await setState(currentState)
     await setBadge("")
   }
+})
+
+
+// ---------- instant replay: the last 2 minutes, even when you were not recording ----------
+
+const REPLAY_MS = 2 * 60 * 1000
+const REPLAY_MAX_LOGS = 600
+const REPLAY_MAX_SHOTS = 6
+type Replay = { logs: SessionLog[]; page?: PageInfo; shots: { at: number; dataUrl: string }[]; lastShot: number }
+const replays = new Map<number, Replay>()
+let replayLoaded: Promise<void> | null = null
+let replaySaveTimer: ReturnType<typeof setTimeout> | null = null
+
+// Session storage survives the service worker sleeping, and is wiped when the browser closes.
+function loadReplays() {
+  replayLoaded ??= chrome.storage.session
+    .get("replays")
+    .then((r) => {
+      for (const [k, v] of Object.entries((r.replays ?? {}) as Record<string, Replay>)) replays.set(Number(k), v)
+    })
+    .catch(() => undefined)
+  return replayLoaded
+}
+function persistReplays() {
+  if (replaySaveTimer) return
+  replaySaveTimer = setTimeout(() => {
+    replaySaveTimer = null
+    chrome.storage.session.set({ replays: Object.fromEntries(replays) }).catch(() => undefined)
+  }, 1000)
+}
+
+function bufferFor(tabId: number) {
+  let r = replays.get(tabId)
+  if (!r) replays.set(tabId, (r = { logs: [], shots: [], lastShot: 0 }))
+  return r
+}
+
+function prune(r: Replay) {
+  const cutoff = Date.now() - REPLAY_MS
+  r.logs = r.logs.filter((l) => Date.parse(l.timestamp) >= cutoff).slice(-REPLAY_MAX_LOGS)
+  r.shots = r.shots.filter((s) => s.at >= cutoff).slice(-REPLAY_MAX_SHOTS)
+}
+
+async function snap(tab: chrome.tabs.Tab, r: Replay) {
+  if (!tab.active || !tab.windowId || Date.now() - r.lastShot < 4000) return
+  r.lastShot = Date.now()
+  const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "jpeg", quality: 70 }).catch(() => null)
+  if (dataUrl) r.shots.push({ at: Date.now(), dataUrl })
+}
+
+async function replayLog(log: SessionLog, sender: chrome.runtime.MessageSender) {
+  const tab = sender.tab
+  if (!tab?.id || currentState.isRecording) return { ok: false }
+  await loadReplays()
+  const r = bufferFor(tab.id)
+  r.logs.push({ ...log, data: { ...log.data, tabId: tab.id } })
+  prune(r)
+  // A screenshot of the moment something broke.
+  if (log.level === "ERROR") await snap(tab, r)
+  persistReplays()
+  return { ok: true }
+}
+
+async function replayPage(info: PageInfo, sender: chrome.runtime.MessageSender) {
+  if (!sender.tab?.id) return { ok: false }
+  await loadReplays()
+  const r = bufferFor(sender.tab.id)
+  r.page = info
+  r.logs.push({ type: "NAVIGATION", level: "INFO", message: `Opened ${info.url}`, data: { url: info.url, title: info.title }, timestamp: new Date().toISOString() })
+  prune(r)
+  persistReplays()
+  return { ok: true }
+}
+
+async function replayStatus(tabId?: number) {
+  await loadReplays()
+  const { instantReplay } = await chrome.storage.local.get("instantReplay")
+  const r = tabId ? replays.get(tabId) : undefined
+  if (r) prune(r)
+  return {
+    ok: true,
+    enabled: Boolean(instantReplay),
+    events: r?.logs.length ?? 0,
+    errors: r?.logs.filter((l) => l.level === "ERROR").length ?? 0,
+    since: r?.logs[0]?.timestamp ?? null,
+  }
+}
+
+async function saveReplay(tabId?: number) {
+  await loadReplays()
+  const tab = tabId ? await chrome.tabs.get(tabId).catch(() => undefined) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0]
+  if (!tab?.id) return { ok: false, error: "No tab" }
+  const r = replays.get(tab.id)
+  if (!r || !r.logs.length) return { ok: false, error: "Nothing captured on this tab in the last 2 minutes yet." }
+  prune(r)
+  r.lastShot = 0
+  await snap(tab, r) // and one of how it looks right now
+  const logs = r.logs
+  const startedAt = Date.parse(logs[0].timestamp)
+  const page = r.page ?? { url: tab.url ?? "", title: tab.title ?? "", userAgent: navigator.userAgent, viewport: { width: tab.width ?? 0, height: tab.height ?? 0 } }
+  try {
+    const res = await apiFetch("/reports/quick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        page,
+        logs,
+        startedAt,
+        duration: Math.round((Date.now() - startedAt) / 1000),
+        analyze: true,
+        mediaPending: true,
+      }),
+    })
+    if (!res.ok) throw new Error(`Saving the report failed (${res.status})`)
+    const report = (await res.json()) as { id: string }
+    const shots = [...r.shots]
+    replays.delete(tab.id)
+    persistReplays()
+    await chrome.tabs.create({ url: `${DEFAULT_APP_URL}/dashboard/reports/${report.id}`, active: true, index: tab.index + 1, windowId: tab.windowId })
+    // Upload the screenshots after the report is open; the page shows them when they arrive.
+    void (async () => {
+      const urls: string[] = []
+      for (const [i, s] of shots.entries()) {
+        try {
+          const blob = await (await fetch(s.dataUrl)).blob()
+          urls.push(await uploadFile("screenshot", blob, `replay-${i}.jpg`))
+        } catch {
+          // skip
+        }
+      }
+      await apiFetch(`/reports/${report.id}/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ screenshotUrls: urls }),
+      }).catch(() => undefined)
+    })()
+    return { ok: true, reportId: report.id }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save" }
+  }
+}
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (replays.delete(tabId)) persistReplays()
+})
+
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command === "save-replay") await saveReplay(tab?.id)
 })
 
 export {}

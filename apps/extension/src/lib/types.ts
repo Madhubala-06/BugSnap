@@ -57,4 +57,8 @@ export type MessageType =
   | { type: "FINISH_RECORDING" }
   | { type: "DISCARD_RECORDING" }
   | { type: "SHOW_COUNTDOWN" }
+  | { type: "REPLAY_LOG"; log: SessionLog }
+  | { type: "REPLAY_PAGE"; info: PageInfo }
+  | { type: "GET_REPLAY"; tabId?: number }
+  | { type: "SAVE_REPLAY"; tabId?: number }
   | { type: "OFFSCREEN_EVENT"; event: "tick" | "track-ended" | "done" | "error"; error?: string }

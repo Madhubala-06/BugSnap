@@ -10,6 +10,38 @@ export const config: PlasmoCSConfig = {
 }
 
 let isCapturing = false
+// Instant replay: when on, keep sending events to the extension's 2-minute buffer even when not recording.
+let replayOn = false
+
+chrome.storage.local.get("instantReplay").then((r) => setReplay(Boolean(r.instantReplay))).catch(() => undefined)
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && "instantReplay" in changes) setReplay(Boolean(changes.instantReplay.newValue))
+})
+
+function setReplay(on: boolean) {
+  replayOn = on
+  if (isCapturing) return
+  if (on) {
+    window.postMessage({ source: "bugsnap-relay", command: "start" }, "*")
+    listen(true)
+    const sendInfo = () => chrome.runtime.sendMessage({ type: "REPLAY_PAGE", info: pageInfo() }).catch(() => undefined)
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sendInfo, { once: true })
+    else sendInfo()
+  } else {
+    window.postMessage({ source: "bugsnap-relay", command: "stop" }, "*")
+    listen(false)
+  }
+}
+
+function listen(on: boolean) {
+  if (on) {
+    document.addEventListener("click", handleClick, true)
+    document.addEventListener("change", handleChange, true)
+  } else {
+    document.removeEventListener("click", handleClick, true)
+    document.removeEventListener("change", handleChange, true)
+  }
+}
 
 chrome.runtime.onMessage.addListener((message: MessageType, _sender, sendResponse) => {
   if (message.type === "RECORDING_STARTED") startCapturing()
@@ -72,7 +104,11 @@ window.addEventListener("message", (event) => {
 })
 
 function send(message: MessageType) {
-  if (!isCapturing && message.type === "ADD_LOG") return
+  if (!isCapturing && message.type === "ADD_LOG") {
+    if (!replayOn) return
+    chrome.runtime.sendMessage({ type: "REPLAY_LOG", log: message.log }).catch(() => undefined)
+    return
+  }
   chrome.runtime.sendMessage(message).catch(() => {
     // extension reloading
   })
@@ -92,19 +128,20 @@ function pageInfo(): PageInfo {
 function startCapturing() {
   if (isCapturing) return
   isCapturing = true
+  listen(false) // re-added below; avoids double listeners when replay was on
   window.postMessage({ source: "bugsnap-relay", command: "start" }, "*")
   const sendInfo = () => send({ type: "PAGE_INFO", info: pageInfo() })
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sendInfo, { once: true })
   else sendInfo()
-  document.addEventListener("click", handleClick, true)
-  document.addEventListener("change", handleChange, true)
+  listen(true)
 }
 
 function stopCapturing() {
   isCapturing = false
+  // With instant replay on, keep the page hooks running for the buffer.
+  if (replayOn) return
   window.postMessage({ source: "bugsnap-relay", command: "stop" }, "*")
-  document.removeEventListener("click", handleClick, true)
-  document.removeEventListener("change", handleChange, true)
+  listen(false)
 }
 
 function describe(el: Element): string {
