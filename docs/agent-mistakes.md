@@ -94,3 +94,13 @@ cross-origin beacons with that content type, so no browser errors would have rea
 **Caught by:** review before testing.
 **Rule added:** client error reports use `fetch(..., { keepalive: true })`.
 **Where:** `apps/web/src/components/error-reporter.tsx`
+
+## 11. The extension only built because of a stale cache
+
+**What happened:** To fix an icon import, the agent moved the extension icon from `assets/` to `src/assets/`. Local
+builds kept passing, but only because icons generated before the move were still cached. Plasmo reads the icon from
+both folders (`src/assets` for imports in code, root `assets` for the toolbar icons), so a clean build failed.
+**Caught by:** the first CI run (a clean machine, no cache).
+**Rule added:** keep the icon in both folders (with a note explaining why); CI builds the extension from scratch and
+checks the two icon files are identical. Build checks should run on a clean checkout, not a warm cache.
+**Where:** `apps/extension/assets/README.md`, `.github/workflows/ci.yml`

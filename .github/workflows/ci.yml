@@ -79,7 +79,10 @@ jobs:
       - name: Extension typecheck
         working-directory: apps/extension
         run: npx tsc --noEmit -p .
-      - name: Extension builds
+      - name: Extension icon is in both places Plasmo reads it from
+        working-directory: apps/extension
+        run: cmp assets/icon.png src/assets/icon.png
+      - name: Extension builds from a clean checkout
         working-directory: apps/extension
         run: npx plasmo build
       - name: Extension bundle has no Node-only code
